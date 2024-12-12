@@ -3,8 +3,6 @@ use log::info;
 use std::collections::HashMap;
 use std::net::SocketAddrV4;
 use std::sync::Arc;
-// use std::sync::mpsc::Sender;
-use anyhow::Result;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::mpsc::Sender;
 use tokio::sync::Mutex;
@@ -41,6 +39,23 @@ impl SocketManager {
         if sockets.remove(&id).is_some() {
             println!("Socket with ID {} removed", id);
         }
+    }
+
+    async fn broadcast(&self, message: String) {
+        let sockets = self.sockets.lock().await;
+        for (_, socket_wrapper) in sockets.iter() {
+            if let Err(err) = socket_wrapper.socket.send(message.clone()).await {
+                eprintln!("Failed to send message to {}: {}", socket_wrapper.id, err);
+            }
+        }
+    }
+    async fn dump(&self) {
+        let sockets = self.sockets.lock().await; // 非同期ロックを取得
+        println!("Current sockets:");
+        for (id, _sender) in sockets.iter() {
+            println!("\t{}", id);
+        }
+        println!();
     }
 }
 
@@ -85,21 +100,24 @@ async fn accept_connection(manager: Arc<Mutex<SocketManager>>, stream: TcpStream
         manager.add(tx.clone()).await
     };
 
-    let manager_clone = manager.clone();
+    let manager_clone_1 = manager.clone();
+    let manager_clone_2 = manager.clone();
 
     // For each incoming message, log the content to the standard output
     tokio::spawn(async move {
         println!("ws receive thread start.");
         while let Some(Ok(msg)) = read.next().await {
             if msg.is_text() || msg.is_binary() {
-                let message_string = msg.to_string(); // 一時オブジェクトを変数で保持
-                let msg_ = message_string.trim(); // trim() を呼び出して安全に参照
-                println!("client {uuid} says... \"{msg_}\"");
-                tx.send(message_string).await.unwrap();
+                let message_string = msg.to_string().trim().to_string(); // 安全に加工
+                println!("received: {}", message_string);
+
+                // 受け取ったメッセージを全クライアントにブロードキャスト
+                let manager = manager_clone_1.lock().await; // ロックを取得
+                manager.broadcast(message_string).await;
             }
         }
-        // ここに削除処理を追加（読み取りタスク終了時）
-        let mut manager = manager_clone.lock().await;
+        // 削除処理
+        let mut manager = manager_clone_2.lock().await;
         manager.remove(uuid).await; // 該当するUUIDを削除
 
         println!("ws receive thread end.");
@@ -115,4 +133,6 @@ async fn accept_connection(manager: Arc<Mutex<SocketManager>>, stream: TcpStream
         }
         println!("echo thread end.")
     });
+
+    manager.lock().await.dump().await;
 }
