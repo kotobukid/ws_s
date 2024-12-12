@@ -1,3 +1,5 @@
+mod client;
+
 use futures_util::{future, StreamExt, TryStreamExt};
 use log::info;
 use std::net::SocketAddrV4;
