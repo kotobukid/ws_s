@@ -1,10 +1,7 @@
-mod client;
-
-use futures_util::{future, SinkExt, StreamExt, TryStreamExt};
+use futures_util::{SinkExt, StreamExt};
 use log::info;
 use std::net::SocketAddrV4;
 use tokio::net::{TcpListener, TcpStream};
-use tokio_tungstenite::tungstenite::Message;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -38,6 +35,7 @@ async fn accept_connection(stream: TcpStream) {
 
     // For each incoming message, log the content to the standard output
     tokio::spawn(async move {
+        println!("ws receive thread start.");
         while let Some(Ok(msg)) = read.next().await {
             if msg.is_text() || msg.is_binary() {
                 let message_string = msg.to_string(); // 一時オブジェクトを変数で保持
@@ -46,11 +44,14 @@ async fn accept_connection(stream: TcpStream) {
                 tx.send(message_string).await.unwrap();
             }
         }
+        println!("ws receive thread end.");
     });
 
     let _ = tokio::spawn(async move {
+        println!("echo thread start.");
         while let Some(m) = rx.recv().await {
             write.send(m.into()).await.unwrap();
         }
+        println!("echo thread end.")
     });
 }
