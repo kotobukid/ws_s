@@ -1,14 +1,14 @@
-use std::env;
 use futures_util::{future, pin_mut, StreamExt};
-use std::net::{Ipv4Addr, SocketAddrV4};
+use std::env;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
 
 #[tokio::main]
 async fn main() {
     // let url = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 8080);
-    let url =
-        env::args().nth(1).unwrap_or_else(|| panic!("this program requires at least one argument"));
+    let url = env::args()
+        .nth(1)
+        .unwrap_or_else(|| panic!("this program requires at least one argument"));
 
     let (stdin_tx, stdin_rx) = futures_channel::mpsc::unbounded();
     tokio::spawn(read_stdin(stdin_tx));
