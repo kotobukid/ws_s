@@ -49,6 +49,7 @@ impl SocketManager {
             }
         }
     }
+
     async fn dump(&self) {
         let sockets = self.sockets.lock().await; // 非同期ロックを取得
         println!("Current sockets:");
@@ -123,7 +124,7 @@ async fn accept_connection(manager: Arc<Mutex<SocketManager>>, stream: TcpStream
         println!("ws receive thread end.");
     });
 
-    let _ = tokio::spawn(async move {
+    tokio::spawn(async move {
         println!("echo thread start.");
         while let Some(m) = rx.recv().await {
             if let Err(e) = write.send(m.into()).await {
