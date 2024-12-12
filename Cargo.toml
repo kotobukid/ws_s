@@ -1,0 +1,11 @@
+[package]
+name = "ws_s"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.94"
+futures-util = "0.3.31"
+log = "0.4.22"
+tokio = { version = "1.42.0", features = ["full"] }
+tokio-tungstenite = "0.24.0"
