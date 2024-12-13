@@ -2,6 +2,7 @@ use futures_util::{SinkExt, StreamExt};
 use log::info;
 use message_pack::{ChatMessage, MessageCategory};
 use std::collections::HashMap;
+use std::env;
 use std::net::SocketAddrV4;
 use std::sync::Arc;
 use tokio::net::{TcpListener, TcpStream};
@@ -63,7 +64,10 @@ impl SocketManager {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let addr: SocketAddrV4 = "127.0.0.1:8080".parse()?;
+    let addr: SocketAddrV4 = env::args()
+        .nth(1)
+        .unwrap_or_else(|| "127.0.0.1:8080".parse().unwrap()).parse()?;
+    // let addr: SocketAddrV4 = "192.168.1.187:8080".parse()?;
 
     let socket: std::io::Result<TcpListener> = TcpListener::bind(&addr).await;
     let listener: TcpListener = socket.expect("Failed to bind socket");
