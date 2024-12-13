@@ -1,18 +1,58 @@
+use std::fmt::Debug;
 use std::io::{Cursor, Read};
+
+#[derive(Eq)]
+pub enum MessageCategory {
+    ChatMessage,
+    Exit,
+}
+
+impl MessageCategory {
+    pub fn to_bytes(&self) -> u8 {
+        match self {
+            MessageCategory::ChatMessage => 0x01,
+            MessageCategory::Exit => 0x02,
+        }
+    }
+
+    pub fn from_bytes(data: &u8) -> Result<Self, String> {
+        match data {
+            0x01 => Ok(MessageCategory::ChatMessage),
+            0x02 => Ok(MessageCategory::Exit),
+            _ => Err("Invalid message category".to_string()),
+        }
+    }
+}
+
+impl Debug for MessageCategory {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MessageCategory::ChatMessage => write!(f, "ChatMessage"),
+            MessageCategory::Exit => write!(f, "Exit"),
+        }
+    }
+}
+
+impl PartialEq<Self> for MessageCategory {
+    fn eq(&self, other: &Self) -> bool {
+        self.to_bytes() == other.to_bytes()
+    }
+}
+
 #[derive(Debug, Eq, PartialEq)]
 pub struct ChatMessage {
     pub author: String,
     pub room: i32,
-    pub category: u8,
+    pub category: MessageCategory,
     pub message: String,
 }
 
 impl ChatMessage {
     pub fn to_bytes(&self) -> Vec<u8> {
-        let mut buffer = Vec::new();
+        let mut buffer: Vec<u8> = Vec::new();
 
         // 1バイト: データタイプ (例: 一般チャットメッセージ -> 0x01)
-        buffer.push(self.category);
+        buffer.push(self.category.to_bytes());
 
         // 2-5バイト: ルームID (i32をビッグエンディアン形式でエンコード)
         buffer.extend(&self.room.to_be_bytes());
@@ -48,7 +88,7 @@ impl ChatMessage {
         cursor
             .read_exact(&mut category_buf)
             .map_err(|_| "Failed to read category")?;
-        let category = category_buf[0];
+        let category = MessageCategory::from_bytes(&category_buf[0])?;
 
         // ルームID (4バイト: i32)
         let mut room_buf = [0u8; 4];
@@ -111,14 +151,14 @@ mod tests {
         let message = ChatMessage {
             author: "Alice".to_string(),
             room: 42,
-            category: 1,
+            category: MessageCategory::ChatMessage,
             message: "Hello, world!".to_string(),
         };
 
         let message = ChatMessage {
             author: "Alice".to_string(),
             room: 42,
-            category: 1,
+            category: MessageCategory::ChatMessage,
             message: "Hello, world!".to_string(),
         };
 

@@ -1,4 +1,4 @@
-use message_pack::ChatMessage;
+use message_pack::{ChatMessage, MessageCategory};
 use std::fs::File;
 use std::io::Write;
 
@@ -6,7 +6,7 @@ fn main() -> anyhow::Result<()> {
     let message = ChatMessage {
         author: "Alice".to_string(),
         room: 42,
-        category: 1,
+        category: MessageCategory::ChatMessage,
         message: "Hello, world!".to_string(),
     };
 

@@ -1,9 +1,9 @@
 use futures_util::{future, pin_mut, SinkExt, StreamExt};
+use message_pack::{ChatMessage, MessageCategory};
 use rnglib::{Language, RNG};
 use std::env;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
-use message_pack::ChatMessage;
 
 #[tokio::main]
 async fn main() {
@@ -41,8 +41,15 @@ async fn main() {
     let stdin_to_ws = stdin_rx.map(Ok).forward(write);
     let ws_to_stdout = {
         read.for_each(|message| async {
-            let data = message.unwrap().into_data();
+            let data = match message {
+                Ok(d) => d,
+                Err(e) => {
+                    eprintln!("{:?}", e);
+                    std::process::exit(1)
+                }
+            };
 
+            let data = data.into_data();
             // データの出力
             let mut stdout = tokio::io::stdout(); // mutable な stdout ハンドルの作成
             stdout.write_all(&data).await.unwrap();
@@ -74,12 +81,19 @@ async fn read_stdin(name: String, tx: futures_channel::mpsc::UnboundedSender<Mes
             }
         };
 
-        // ChatMessage を作成
-        let chat_message = ChatMessage {
-            author: name.clone(),
-            room: 42,                    // 仮のルーム番号
-            category: 1,                 // 仮のカテゴリ
-            message: input.trim().to_string(), // 標準入力からのメッセージ
+        let chat_message = match input.trim() {
+            "exit" => ChatMessage {
+                category: MessageCategory::Exit,
+                room: 42,
+                author: name.clone(),
+                message: "".to_string(),
+            },
+            _ => ChatMessage {
+                author: name.clone(),
+                room: 42, // 仮のルーム番号
+                category: MessageCategory::ChatMessage,
+                message: input.trim().to_string(), // 標準入力からのメッセージ
+            },
         };
 
         // ChatMessage をバイナリ形式にエンコード
