@@ -1,0 +1,9 @@
+struct MESSAGE_A {
+    byte    category;        // 1バイト: カテゴリ
+    dword   room;            // 4バイト: ルームID
+    byte    author_len;      // 1バイト: 著者名の長さ
+    byte    author[1];       // 可変長: 著者名 (長さは author_len に依存)
+    word    message_len;     // 2バイト: メッセージ本文の長さ
+    byte    message[1];      // 可変長: メッセージ本文 (長さは message_len に依存)
+    byte    checksum;        // 1バイト: チェックサム
+};
