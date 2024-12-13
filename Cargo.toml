@@ -20,3 +20,4 @@ tokio-tungstenite = "0.24.0"
 futures-channel = "0.3.31"
 uuid = { version = "1.11.0", features = ["v4"] }
 message-pack = {path = "message-pack"}
+random_name_generator = "0.3.6"

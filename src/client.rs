@@ -1,4 +1,5 @@
-use futures_util::{future, pin_mut, StreamExt};
+use futures_util::{future, pin_mut, SinkExt, StreamExt};
+use rnglib::{Language, RNG};
 use std::env;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
@@ -16,14 +17,36 @@ async fn main() {
     let (ws_stream, _) = connect_async(&url).await.expect("Failed to connect");
     println!("WebSocket handshake has been successfully completed");
 
-    let (write, read) = ws_stream.split();
+    let (mut write, read) = ws_stream.split();
+
+    {
+        let name = {
+            let rng = RNG::try_from(&Language::Fantasy).unwrap();
+
+            let first_name = rng.generate_name();
+            let last_name = rng.generate_name();
+            format!("{first_name} {last_name}")
+        };
+
+        // `I am {name}` メッセージをWebSocketに送信
+        let intro_message = format!("I am {name}");
+        write
+            .send(Message::Text(intro_message))
+            .await
+            .expect("メッセージ送信に失敗しました");
+        println!("メッセージ `I am {}` が送信されました", name);
+    }
 
     let stdin_to_ws = stdin_rx.map(Ok).forward(write);
     let ws_to_stdout = {
         read.for_each(|message| async {
             let data = message.unwrap().into_data();
-            println!("server says... {:?}", data);
-            tokio::io::stdout().write_all(&data).await.unwrap();
+
+            // データの出力
+            let mut stdout = tokio::io::stdout(); // mutable な stdout ハンドルの作成
+            stdout.write_all(&data).await.unwrap();
+            stdout.flush().await.unwrap(); // フラッシュを明示的に実行
+            println!()
         })
     };
 
