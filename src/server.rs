@@ -7,6 +7,7 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::mpsc::Sender;
 use tokio::sync::Mutex;
 use uuid::Uuid;
+use message_pack::ChatMessage;
 
 struct SocketWrapper {
     id: Uuid,
@@ -108,13 +109,32 @@ async fn accept_connection(manager: Arc<Mutex<SocketManager>>, stream: TcpStream
     tokio::spawn(async move {
         println!("ws receive thread start.");
         while let Some(Ok(msg)) = read.next().await {
-            if msg.is_text() || msg.is_binary() {
+            if msg.is_text() {
                 let message_string = msg.to_string().trim().to_string(); // 安全に加工
                 println!("received: {}", message_string);
 
                 // 受け取ったメッセージを全クライアントにブロードキャスト
                 let manager = manager_clone_1.lock().await; // ロックを取得
                 manager.broadcast(message_string).await;
+            } else if msg.is_binary() {
+                match ChatMessage::from_bytes(&*msg.into_data()) {
+                    Ok(chat_message) => {
+                        println!("received (binary): {:?}", chat_message);
+
+                        // チャットメッセージを何らかの形で文字列に変換してブロードキャスト
+                        let message_string = format!(
+                            "[Room {} - {}]: {}",
+                            chat_message.room, chat_message.author, chat_message.message
+                        );
+
+                        // クライアントにブロードキャスト
+                        let manager = manager_clone_1.lock().await; // ロックを取得
+                        manager.broadcast(message_string.clone()).await;
+                    }
+                    Err(err) => {
+                        eprintln!("Failed to parse binary message: {}", err);
+                    }
+                }
             }
         }
         // 削除処理
