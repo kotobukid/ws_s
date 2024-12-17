@@ -1,6 +1,6 @@
 use futures_util::{SinkExt, StreamExt};
 use log::info;
-use message_pack::{ChatMessage, MessageCategory};
+use message_pack::{ByteMessage, MessageCategory, MessageGeneric, SendMessage, TextMessage};
 use std::collections::HashMap;
 use std::env;
 use std::net::SocketAddrV4;
@@ -66,7 +66,8 @@ impl SocketManager {
 async fn main() -> anyhow::Result<()> {
     let addr: SocketAddrV4 = env::args()
         .nth(1)
-        .unwrap_or_else(|| "127.0.0.1:8080".parse().unwrap()).parse()?;
+        .unwrap_or_else(|| "127.0.0.1:8080".parse().unwrap())
+        .parse()?;
     // let addr: SocketAddrV4 = "192.168.1.187:8080".parse()?;
 
     let socket: std::io::Result<TcpListener> = TcpListener::bind(&addr).await;
@@ -122,45 +123,57 @@ async fn accept_connection(manager: Arc<Mutex<SocketManager>>, stream: TcpStream
                 let manager = manager_clone_1.lock().await; // ロックを取得
                 manager.broadcast(message_string).await;
             } else if msg.is_binary() {
-                match ChatMessage::from_bytes(&*msg.into_data()) {
-                    Ok(chat_message) => {
-                        println!("received (binary): {:?}", chat_message);
+                let m: Vec<u8> = msg.into_data();
 
-                        match chat_message.category {
-                            MessageCategory::Exit => {
-                                println!("received exit message");
+                match &m[0] {
+                    0x01 => {
+                        // chat
+                        let chat_message = TextMessage::from_bytes(&*m).unwrap();
+                        // チャットメッセージを何らかの形で文字列に変換してブロードキャスト
+                        let message_string = format!(
+                            "[Room {} - {}]: {}",
+                            chat_message.room, chat_message.author, chat_message.message
+                        );
 
-                                // ロックを使って離脱メッセージをブロードキャスト
-                                let leave_message = format!("User {} has left the chat.", uuid);
-                                {
-                                    let manager = manager_clone_1.lock().await;
-                                    manager.broadcast(leave_message).await;
-                                } // ロックを解除
+                        // クライアントにブロードキャスト
+                        let manager = manager_clone_1.lock().await; // ロックを取得
+                        manager.broadcast(message_string.clone()).await;
+                    }
+                    0x02 => {
+                        // exit
+                        // let d = TextMessage::from_bytes(&*m).unwrap();
+                        println!("received exit message");
 
-                                // UUIDの削除
-                                {
-                                    let mut manager = manager_clone_3.lock().await;
-                                    manager.remove(uuid).await;
-                                } // ロックを解除
+                        // ロックを使って離脱メッセージをブロードキャスト
+                        let leave_message = format!("User {} has left the chat.", uuid);
+                        {
+                            let manager = manager_clone_1.lock().await;
+                            manager.broadcast(leave_message).await;
+                        } // ロックを解除
 
-                                // スレッド終了
-                                break;
+                        // UUIDの削除
+                        {
+                            let mut manager = manager_clone_3.lock().await;
+                            manager.remove(uuid).await;
+                        } // ロックを解除
+
+                        // スレッド終了
+                        break;
+                    }
+                    0x03 => {
+                        // file transfer
+                        let d = ByteMessage::from_bytes(&*m).unwrap();
+                        match d.category {
+                            MessageCategory::FileTransfer => {
+                                println!("received (file): {:?}", d);
                             }
-                            MessageCategory::ChatMessage => {
-                                // チャットメッセージを何らかの形で文字列に変換してブロードキャスト
-                                let message_string = format!(
-                                    "[Room {} - {}]: {}",
-                                    chat_message.room, chat_message.author, chat_message.message
-                                );
-
-                                // クライアントにブロードキャスト
-                                let manager = manager_clone_1.lock().await; // ロックを取得
-                                manager.broadcast(message_string.clone()).await;
+                            _ => {
+                                eprintln!("Invalid message category");
                             }
                         }
                     }
-                    Err(err) => {
-                        eprintln!("Failed to parse binary message: {}", err);
+                    _ => {
+                        eprintln!("Invalid message category");
                     }
                 }
             }

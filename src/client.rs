@@ -1,5 +1,6 @@
 use futures_util::{future, pin_mut, SinkExt, StreamExt};
-use message_pack::{ChatMessage, MessageCategory};
+use message_pack::{ByteMessage, MessageCategory, MessageGeneric, SendMessage, TextMessage};
+use rfd::AsyncFileDialog;
 use rnglib::{Language, RNG};
 use std::env;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -81,25 +82,47 @@ async fn read_stdin(name: String, tx: futures_channel::mpsc::UnboundedSender<Mes
             }
         };
 
-        let chat_message = match input.trim() {
-            "exit" => ChatMessage {
+        let chat_message: Option<MessageGeneric> = match input.trim() {
+            "exit" => Some(MessageGeneric::ChatMessage(TextMessage {
                 category: MessageCategory::Exit,
                 room: 42,
                 author: name.clone(),
                 message: "".to_string(),
-            },
-            _ => ChatMessage {
+            })),
+            "file" => {
+                let file = AsyncFileDialog::new()
+                    .add_filter("text", &["txt", "rs"])
+                    .add_filter("rust", &["rs", "toml"])
+                    .set_directory("/")
+                    .pick_file()
+                    .await;
+
+                if let Some(file) = file {
+                    let bytes = file.read().await;
+                    Some(MessageGeneric::ByteMessage(ByteMessage {
+                        category: MessageCategory::FileTransfer,
+                        room: 42,
+                        author: name.clone(),
+                        payload: bytes,
+                    }))
+                } else {
+                    None
+                }
+            }
+            _ => Some(MessageGeneric::ChatMessage(TextMessage {
                 author: name.clone(),
                 room: 42, // 仮のルーム番号
                 category: MessageCategory::ChatMessage,
                 message: input.trim().to_string(), // 標準入力からのメッセージ
-            },
+            })),
         };
 
-        // ChatMessage をバイナリ形式にエンコード
-        let binary_data = chat_message.to_bytes();
+        if let Some(chat_message) = chat_message {
+            // ChatMessage をバイナリ形式にエンコード
+            let binary_data = chat_message.to_bytes();
 
-        // バイナリデータを WebSocket メッセージとして送信
-        tx.unbounded_send(Message::binary(binary_data)).unwrap();
+            // バイナリデータを WebSocket メッセージとして送信
+            tx.unbounded_send(Message::binary(binary_data)).unwrap();
+        }
     }
 }

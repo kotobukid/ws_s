@@ -1,9 +1,9 @@
-use message_pack::{ChatMessage, MessageCategory};
+use message_pack::{TextMessage, MessageCategory};
 use std::fs::File;
 use std::io::Write;
 
 fn main() -> anyhow::Result<()> {
-    let message = ChatMessage {
+    let message = TextMessage {
         author: "Alice".to_string(),
         room: 42,
         category: MessageCategory::ChatMessage,
@@ -15,7 +15,7 @@ fn main() -> anyhow::Result<()> {
     println!("{:?}", bytes);
     write_bytes_to_file(&bytes)?;
 
-    let decoded: ChatMessage = ChatMessage::from_bytes(&bytes).unwrap();
+    let decoded: TextMessage = TextMessage::from_bytes(&bytes).unwrap();
     println!("{:?}", decoded);
 
     Ok(())
