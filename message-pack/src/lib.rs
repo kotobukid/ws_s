@@ -55,13 +55,15 @@ pub trait BinaryDeserializable {
 
 pub trait SendMessage: BinarySerializable + BinaryDeserializable {
     fn to_bytes(&self) -> Vec<u8>;
-    fn from_bytes(data: &[u8]) -> Result<Self, String> where Self: Sized;
+    fn from_bytes(data: &[u8]) -> Result<Self, String>
+    where
+        Self: Sized;
 }
 
 pub enum UnifiedMessage {
     ChatMessage(TextMessage),
     BinaryMessage(BinaryMessage),
-    Exit(TextMessage),
+    Exit(ExitMessage),
 }
 
 impl BinarySerializable for UnifiedMessage {
@@ -77,7 +79,7 @@ impl BinarySerializable for UnifiedMessage {
 impl BinaryDeserializable for UnifiedMessage {
     fn from_bytes(data: &[u8]) -> Result<Self, String>
     where
-        Self: Sized
+        Self: Sized,
     {
         // まずカテゴリーを判定して、それに基づいた型のインスタンスを生成。
         if data.is_empty() {
@@ -91,7 +93,7 @@ impl BinaryDeserializable for UnifiedMessage {
                 Ok(UnifiedMessage::ChatMessage(message))
             }
             MessageType::Exit => {
-                let message = TextMessage::from_bytes(data)?;
+                let message = ExitMessage {};
                 Ok(UnifiedMessage::Exit(message))
             }
             MessageType::FileTransfer => {
@@ -145,7 +147,7 @@ impl BinarySerializable for TextMessage {
 impl BinaryDeserializable for TextMessage {
     fn from_bytes(data: &[u8]) -> Result<Self, String>
     where
-        Self: Sized
+        Self: Sized,
     {
         let mut cursor = Cursor::new(data);
 
@@ -208,7 +210,6 @@ impl BinaryDeserializable for TextMessage {
     }
 }
 
-
 #[derive(Debug, Eq, PartialEq)]
 pub struct BinaryMessage {
     pub author: String,
@@ -251,7 +252,7 @@ impl BinarySerializable for BinaryMessage {
 impl BinaryDeserializable for BinaryMessage {
     fn from_bytes(data: &[u8]) -> Result<Self, String>
     where
-        Self: Sized
+        Self: Sized,
     {
         let mut cursor = Cursor::new(data);
 
@@ -312,6 +313,27 @@ impl BinaryDeserializable for BinaryMessage {
         })
     }
 }
+
+pub struct ExitMessage {}
+impl BinarySerializable for ExitMessage {
+    fn to_bytes(&self) -> Vec<u8> {
+        vec![0x02]
+    }
+}
+
+// impl BinaryDeserializable for ExitMessage {
+//     fn from_bytes(data: &[u8]) -> Result<Self, String>
+//     where
+//         Self: Sized
+//     {
+//         if data.len() != 1 {
+//             return Err("Invalid data length".to_string());
+//         }
+//         if data[0] != 0x02 {
+//             return Err("Invalid data".to_string());
+//         }
+//     }
+// }
 
 #[cfg(test)]
 mod tests {

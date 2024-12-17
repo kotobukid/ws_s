@@ -1,5 +1,7 @@
 use futures_util::{future, pin_mut, SinkExt, StreamExt};
-use message_pack::{BinaryMessage, BinarySerializable, MessageType, TextMessage, UnifiedMessage};
+use message_pack::{
+    BinaryMessage, BinarySerializable, ExitMessage, MessageType, TextMessage, UnifiedMessage,
+};
 use rfd::AsyncFileDialog;
 use rnglib::{Language, RNG};
 use std::env;
@@ -83,12 +85,7 @@ async fn read_stdin(name: String, tx: futures_channel::mpsc::UnboundedSender<Mes
         };
 
         let chat_message: Option<UnifiedMessage> = match input.trim() {
-            "exit" => Some(UnifiedMessage::ChatMessage(TextMessage {
-                category: MessageType::Exit,
-                room: 42,
-                sender: name.clone(),
-                content: "".to_string(),
-            })),
+            "exit" => Some(UnifiedMessage::Exit(ExitMessage {})),
             "file" => {
                 let file = AsyncFileDialog::new()
                     .add_filter("text", &["txt", "rs"])

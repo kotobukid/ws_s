@@ -1,6 +1,6 @@
 use futures_util::{SinkExt, StreamExt};
 use log::info;
-use message_pack::{BinaryMessage, MessageType, UnifiedMessage, SendMessage, TextMessage};
+use message_pack::{BinaryMessage, MessageType, TextMessage, BinaryDeserializable};
 use std::collections::HashMap;
 use std::env;
 use std::net::SocketAddrV4;
