@@ -52,6 +52,15 @@ impl SocketManager {
         }
     }
 
+    async fn direct_message(&self, id: Uuid, message: String) {
+        let sockets = self.sockets.lock().await; // ロックガードを束縛
+        let target_socket = sockets.get(&id).unwrap(); // ロックガードからデータを取得
+
+        if let Err(err) = target_socket.socket.send(message.clone()).await {
+            eprintln!("Failed to send message to {}: {}", id, err);
+        }
+    }
+
     async fn dump(&self) {
         let sockets = self.sockets.lock().await; // 非同期ロックを取得
         println!("Current sockets:");
