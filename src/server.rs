@@ -1,6 +1,6 @@
 use futures_util::{SinkExt, StreamExt};
 use log::info;
-use message_pack::{ByteMessage, MessageCategory, MessageGeneric, SendMessage, TextMessage};
+use message_pack::{BinaryMessage, MessageType, UnifiedMessage, SendMessage, TextMessage};
 use std::collections::HashMap;
 use std::env;
 use std::net::SocketAddrV4;
@@ -132,7 +132,7 @@ async fn accept_connection(manager: Arc<Mutex<SocketManager>>, stream: TcpStream
                         // チャットメッセージを何らかの形で文字列に変換してブロードキャスト
                         let message_string = format!(
                             "[Room {} - {}]: {}",
-                            chat_message.room, chat_message.author, chat_message.message
+                            chat_message.room, chat_message.sender, chat_message.content
                         );
 
                         // クライアントにブロードキャスト
@@ -162,9 +162,9 @@ async fn accept_connection(manager: Arc<Mutex<SocketManager>>, stream: TcpStream
                     }
                     0x03 => {
                         // file transfer
-                        let d = ByteMessage::from_bytes(&*m).unwrap();
+                        let d = BinaryMessage::from_bytes(&*m).unwrap();
                         match d.category {
-                            MessageCategory::FileTransfer => {
+                            MessageType::FileTransfer => {
                                 println!("received (file): {:?}", d);
                             }
                             _ => {

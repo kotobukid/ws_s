@@ -2,42 +2,42 @@ use std::fmt::Debug;
 use std::io::{Cursor, Read};
 
 #[derive(Eq)]
-pub enum MessageCategory {
-    ChatMessage,
+pub enum MessageType {
+    Chat,
     Exit,
     FileTransfer,
 }
 
-impl MessageCategory {
+impl MessageType {
     pub fn to_bytes(&self) -> u8 {
         match self {
-            MessageCategory::ChatMessage => 0x01,
-            MessageCategory::Exit => 0x02,
-            MessageCategory::FileTransfer => 0x03,
+            MessageType::Chat => 0x01,
+            MessageType::Exit => 0x02,
+            MessageType::FileTransfer => 0x03,
         }
     }
 
     pub fn from_bytes(data: &u8) -> Result<Self, String> {
         match data {
-            0x01 => Ok(MessageCategory::ChatMessage),
-            0x02 => Ok(MessageCategory::Exit),
-            0x03 => Ok(MessageCategory::FileTransfer),
+            0x01 => Ok(MessageType::Chat),
+            0x02 => Ok(MessageType::Exit),
+            0x03 => Ok(MessageType::FileTransfer),
             _ => Err("Invalid message category".to_string()),
         }
     }
 }
 
-impl Debug for MessageCategory {
+impl Debug for MessageType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            MessageCategory::ChatMessage => write!(f, "ChatMessage"),
-            MessageCategory::Exit => write!(f, "Exit"),
-            MessageCategory::FileTransfer => write!(f, "FileTransfer"),
+            MessageType::Chat => write!(f, "ChatMessage"),
+            MessageType::Exit => write!(f, "Exit"),
+            MessageType::FileTransfer => write!(f, "FileTransfer"),
         }
     }
 }
 
-impl PartialEq<Self> for MessageCategory {
+impl PartialEq<Self> for MessageType {
     fn eq(&self, other: &Self) -> bool {
         self.to_bytes() == other.to_bytes()
     }
@@ -50,18 +50,18 @@ pub trait SendMessage {
         Self: Sized;
 }
 
-pub enum MessageGeneric {
+pub enum UnifiedMessage {
     ChatMessage(TextMessage),
-    ByteMessage(ByteMessage),
+    BinaryMessage(BinaryMessage),
     Exit(TextMessage),
 }
 
-impl SendMessage for MessageGeneric {
+impl SendMessage for UnifiedMessage {
     fn to_bytes(&self) -> Vec<u8> {
         match self {
-            MessageGeneric::ChatMessage(msg) => msg.to_bytes(), // TextMessage の to_bytes を呼び出し
-            MessageGeneric::ByteMessage(msg) => msg.to_bytes(), // ByteMessage の to_bytes を呼び出し
-            MessageGeneric::Exit(msg) => msg.to_bytes(), // TextMessage の to_bytes を呼び出し
+            UnifiedMessage::ChatMessage(msg) => msg.to_bytes(), // TextMessage の to_bytes を呼び出し
+            UnifiedMessage::BinaryMessage(msg) => msg.to_bytes(), // ByteMessage の to_bytes を呼び出し
+            UnifiedMessage::Exit(msg) => msg.to_bytes(), // TextMessage の to_bytes を呼び出し
         }
     }
 
@@ -70,20 +70,20 @@ impl SendMessage for MessageGeneric {
         if data.is_empty() {
             return Err("Input data is empty.".to_string());
         }
-        let category = MessageCategory::from_bytes(&data[0])?;
+        let category = MessageType::from_bytes(&data[0])?;
 
         match category {
-            MessageCategory::ChatMessage => {
+            MessageType::Chat => {
                 let message = TextMessage::from_bytes(data)?;
-                Ok(MessageGeneric::ChatMessage(message))
+                Ok(UnifiedMessage::ChatMessage(message))
             }
-            MessageCategory::Exit => {
+            MessageType::Exit => {
                 let message = TextMessage::from_bytes(data)?;
-                Ok(MessageGeneric::Exit(message))
+                Ok(UnifiedMessage::Exit(message))
             }
-            MessageCategory::FileTransfer => {
-                let message = ByteMessage::from_bytes(data)?;
-                Ok(MessageGeneric::ByteMessage(message))
+            MessageType::FileTransfer => {
+                let message = BinaryMessage::from_bytes(data)?;
+                Ok(UnifiedMessage::BinaryMessage(message))
             }
         }
     }
@@ -91,10 +91,10 @@ impl SendMessage for MessageGeneric {
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct TextMessage {
-    pub author: String,
+    pub sender: String,
     pub room: i32,
-    pub category: MessageCategory,
-    pub message: String,
+    pub category: MessageType,
+    pub content: String,
 }
 
 impl SendMessage for TextMessage {
@@ -108,14 +108,14 @@ impl SendMessage for TextMessage {
         buffer.extend(&self.room.to_be_bytes());
 
         // 6バイト目: ユーザー名の長さ
-        let author_bytes = self.author.as_bytes();
+        let author_bytes = self.sender.as_bytes();
         buffer.push(author_bytes.len() as u8);
 
         // 7バイト以降: ユーザー名のバイト列
         buffer.extend(author_bytes);
 
         // メッセージ本文の長さ (u16、ビッグエンディアン形式)
-        let message_bytes = self.message.as_bytes();
+        let message_bytes = self.content.as_bytes();
         buffer.extend(&(message_bytes.len() as u16).to_be_bytes());
 
         // 本文のバイト列
@@ -136,7 +136,7 @@ impl SendMessage for TextMessage {
         cursor
             .read_exact(&mut category_buf)
             .map_err(|_| "Failed to read category")?;
-        let category = MessageCategory::from_bytes(&category_buf[0])?;
+        let category = MessageType::from_bytes(&category_buf[0])?;
 
         // ルームID (4バイト: i32)
         let mut room_buf = [0u8; 4];
@@ -182,23 +182,23 @@ impl SendMessage for TextMessage {
         // チェックサムの検証ロジックを追加する場合はここで計算
 
         Ok(Self {
-            author,
+            sender: author,
             room,
             category,
-            message,
+            content: message,
         })
     }
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub struct ByteMessage {
+pub struct BinaryMessage {
     pub author: String,
     pub room: i32,
-    pub category: MessageCategory,
-    pub payload: Vec<u8>,
+    pub category: MessageType,
+    pub content: Vec<u8>,
 }
 
-impl SendMessage for ByteMessage {
+impl SendMessage for BinaryMessage {
     fn to_bytes(&self) -> Vec<u8> {
         let mut buffer: Vec<u8> = Vec::new();
 
@@ -216,10 +216,10 @@ impl SendMessage for ByteMessage {
         buffer.extend(author_bytes);
 
         // メッセージ本文の長さ (u16、ビッグエンディアン形式)
-        buffer.extend(&(self.payload.len() as u16).to_be_bytes());
+        buffer.extend(&(self.content.len() as u16).to_be_bytes());
 
         // 本文のバイト列
-        buffer.extend(self.payload.clone());
+        buffer.extend(self.content.clone());
 
         // 最後に簡易的なチェックサム (すべてのバイトを合計して8ビットで切り捨て)
         let checksum: u8 = buffer.iter().fold(0, |acc, &x| acc.wrapping_add(x));
@@ -236,7 +236,7 @@ impl SendMessage for ByteMessage {
         cursor
             .read_exact(&mut category_buf)
             .map_err(|_| "Failed to read category")?;
-        let category = MessageCategory::from_bytes(&category_buf[0])?;
+        let category = MessageType::from_bytes(&category_buf[0])?;
 
         // ルームID (4バイト: i32)
         let mut room_buf = [0u8; 4];
@@ -267,11 +267,10 @@ impl SendMessage for ByteMessage {
         let message_len = u16::from_be_bytes(message_len_buf) as usize;
 
         // メッセージ本文 (可変長)
-        let mut message_buf = vec![0u8; message_len];
+        let mut content = vec![0u8; message_len];
         cursor
-            .read_exact(&mut message_buf)
+            .read_exact(&mut content)
             .map_err(|_| "Failed to read message")?;
-        // let message = String::from_utf8(message_buf).map_err(|_| "Invalid UTF-8 in message")?;
 
         // チェックサム (1バイト: 最後に検証可能)
         let mut checksum_buf = [0u8; 1];
@@ -285,7 +284,7 @@ impl SendMessage for ByteMessage {
             author,
             room,
             category,
-            payload: message_buf,
+            content,
         })
     }
 }
@@ -297,17 +296,17 @@ mod tests {
     #[test]
     fn test_encode_decode() {
         let message = TextMessage {
-            author: "Alice".to_string(),
+            sender: "Alice".to_string(),
             room: 42,
-            category: MessageCategory::ChatMessage,
-            message: "Hello, world!".to_string(),
+            category: MessageType::Chat,
+            content: "Hello, world!".to_string(),
         };
 
         let message = TextMessage {
-            author: "Alice".to_string(),
+            sender: "Alice".to_string(),
             room: 42,
-            category: MessageCategory::ChatMessage,
-            message: "Hello, world!".to_string(),
+            category: MessageType::Chat,
+            content: "Hello, world!".to_string(),
         };
 
         let bytes = message.to_bytes();

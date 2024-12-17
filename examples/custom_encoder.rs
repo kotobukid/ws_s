@@ -1,13 +1,13 @@
-use message_pack::{TextMessage, MessageCategory};
+use message_pack::{TextMessage, MessageType};
 use std::fs::File;
 use std::io::Write;
 
 fn main() -> anyhow::Result<()> {
     let message = TextMessage {
-        author: "Alice".to_string(),
+        sender: "Alice".to_string(),
         room: 42,
-        category: MessageCategory::ChatMessage,
-        message: "Hello, world!".to_string(),
+        category: MessageType::Chat,
+        content: "Hello, world!".to_string(),
     };
 
     let bytes = message.to_bytes();

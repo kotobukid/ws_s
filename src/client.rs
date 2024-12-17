@@ -1,5 +1,5 @@
 use futures_util::{future, pin_mut, SinkExt, StreamExt};
-use message_pack::{ByteMessage, MessageCategory, MessageGeneric, SendMessage, TextMessage};
+use message_pack::{BinaryMessage, MessageType, UnifiedMessage, SendMessage, TextMessage};
 use rfd::AsyncFileDialog;
 use rnglib::{Language, RNG};
 use std::env;
@@ -82,12 +82,12 @@ async fn read_stdin(name: String, tx: futures_channel::mpsc::UnboundedSender<Mes
             }
         };
 
-        let chat_message: Option<MessageGeneric> = match input.trim() {
-            "exit" => Some(MessageGeneric::ChatMessage(TextMessage {
-                category: MessageCategory::Exit,
+        let chat_message: Option<UnifiedMessage> = match input.trim() {
+            "exit" => Some(UnifiedMessage::ChatMessage(TextMessage {
+                category: MessageType::Exit,
                 room: 42,
-                author: name.clone(),
-                message: "".to_string(),
+                sender: name.clone(),
+                content: "".to_string(),
             })),
             "file" => {
                 let file = AsyncFileDialog::new()
@@ -99,21 +99,21 @@ async fn read_stdin(name: String, tx: futures_channel::mpsc::UnboundedSender<Mes
 
                 if let Some(file) = file {
                     let bytes = file.read().await;
-                    Some(MessageGeneric::ByteMessage(ByteMessage {
-                        category: MessageCategory::FileTransfer,
+                    Some(UnifiedMessage::BinaryMessage(BinaryMessage {
+                        category: MessageType::FileTransfer,
                         room: 42,
                         author: name.clone(),
-                        payload: bytes,
+                        content: bytes,
                     }))
                 } else {
                     None
                 }
             }
-            _ => Some(MessageGeneric::ChatMessage(TextMessage {
-                author: name.clone(),
+            _ => Some(UnifiedMessage::ChatMessage(TextMessage {
+                sender: name.clone(),
                 room: 42, // 仮のルーム番号
-                category: MessageCategory::ChatMessage,
-                message: input.trim().to_string(), // 標準入力からのメッセージ
+                category: MessageType::Chat,
+                content: input.trim().to_string(), // 標準入力からのメッセージ
             })),
         };
 
