@@ -1,5 +1,5 @@
 use futures_util::{future, pin_mut, SinkExt, StreamExt};
-use message_pack::{BinaryMessage, MessageType, UnifiedMessage, SendMessage, TextMessage};
+use message_pack::{BinaryMessage, BinarySerializable, MessageType, TextMessage, UnifiedMessage};
 use rfd::AsyncFileDialog;
 use rnglib::{Language, RNG};
 use std::env;

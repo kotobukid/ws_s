@@ -43,11 +43,19 @@ impl PartialEq<Self> for MessageType {
     }
 }
 
-pub trait SendMessage {
+pub trait BinarySerializable {
     fn to_bytes(&self) -> Vec<u8>;
+}
+
+pub trait BinaryDeserializable {
     fn from_bytes(data: &[u8]) -> Result<Self, String>
     where
         Self: Sized;
+}
+
+pub trait SendMessage: BinarySerializable + BinaryDeserializable {
+    fn to_bytes(&self) -> Vec<u8>;
+    fn from_bytes(data: &[u8]) -> Result<Self, String> where Self: Sized;
 }
 
 pub enum UnifiedMessage {
@@ -56,7 +64,7 @@ pub enum UnifiedMessage {
     Exit(TextMessage),
 }
 
-impl SendMessage for UnifiedMessage {
+impl BinarySerializable for UnifiedMessage {
     fn to_bytes(&self) -> Vec<u8> {
         match self {
             UnifiedMessage::ChatMessage(msg) => msg.to_bytes(), // TextMessage の to_bytes を呼び出し
@@ -64,8 +72,13 @@ impl SendMessage for UnifiedMessage {
             UnifiedMessage::Exit(msg) => msg.to_bytes(), // TextMessage の to_bytes を呼び出し
         }
     }
+}
 
-    fn from_bytes(data: &[u8]) -> Result<Self, String> {
+impl BinaryDeserializable for UnifiedMessage {
+    fn from_bytes(data: &[u8]) -> Result<Self, String>
+    where
+        Self: Sized
+    {
         // まずカテゴリーを判定して、それに基づいた型のインスタンスを生成。
         if data.is_empty() {
             return Err("Input data is empty.".to_string());
@@ -97,7 +110,7 @@ pub struct TextMessage {
     pub content: String,
 }
 
-impl SendMessage for TextMessage {
+impl BinarySerializable for TextMessage {
     fn to_bytes(&self) -> Vec<u8> {
         let mut buffer: Vec<u8> = Vec::new();
 
@@ -127,8 +140,13 @@ impl SendMessage for TextMessage {
 
         buffer
     }
+}
 
-    fn from_bytes(data: &[u8]) -> Result<Self, String> {
+impl BinaryDeserializable for TextMessage {
+    fn from_bytes(data: &[u8]) -> Result<Self, String>
+    where
+        Self: Sized
+    {
         let mut cursor = Cursor::new(data);
 
         // カテゴリ (1バイト: u8)
@@ -190,6 +208,7 @@ impl SendMessage for TextMessage {
     }
 }
 
+
 #[derive(Debug, Eq, PartialEq)]
 pub struct BinaryMessage {
     pub author: String,
@@ -198,7 +217,7 @@ pub struct BinaryMessage {
     pub content: Vec<u8>,
 }
 
-impl SendMessage for BinaryMessage {
+impl BinarySerializable for BinaryMessage {
     fn to_bytes(&self) -> Vec<u8> {
         let mut buffer: Vec<u8> = Vec::new();
 
@@ -227,8 +246,13 @@ impl SendMessage for BinaryMessage {
 
         buffer
     }
+}
 
-    fn from_bytes(data: &[u8]) -> Result<Self, String> {
+impl BinaryDeserializable for BinaryMessage {
+    fn from_bytes(data: &[u8]) -> Result<Self, String>
+    where
+        Self: Sized
+    {
         let mut cursor = Cursor::new(data);
 
         // カテゴリ (1バイト: u8)
