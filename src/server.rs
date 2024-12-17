@@ -182,7 +182,7 @@ async fn accept_connection(manager: Arc<Mutex<SocketManager>>, stream: TcpStream
                                     return;
                                 }
 
-                                let default_path = "./uploads"; // todo: あらかじめ作成して置かねばならないのを回避する
+                                let default_path = "./uploads"; // todo: あらかじめ作成しておかねばならないのを回避する
                                 let full_path = format!("{}/{}", default_path, d.filename);
 
                                 let transferred_bytes = format_bytes(d.content.len() as u64);
