@@ -67,14 +67,15 @@ pub trait SendMessage: BinarySerializable + BinaryDeserializable {
 pub enum UnifiedMessage {
     ChatMessage(TextMessage),
     BinaryMessage(BinaryMessage),
+    FileTransferMessage(FileTransferMessage),
     Exit(ExitMessage),
 }
 
 pub fn get_type(b: &u8) -> MessageType {
     match b {
-        Some(0x01) => MessageType::Chat,
-        Some(0x02) => MessageType::Exit,
-        Some(0x03) => MessageType::FileTransfer,
+        0x01 => MessageType::Chat,
+        0x02 => MessageType::Exit,
+        0x03 => MessageType::FileTransfer,
         _ => MessageType::Unknown,
     }
 }
@@ -84,6 +85,7 @@ impl BinarySerializable for UnifiedMessage {
         match self {
             UnifiedMessage::ChatMessage(msg) => msg.to_bytes(), // TextMessage の to_bytes を呼び出し
             UnifiedMessage::BinaryMessage(msg) => msg.to_bytes(), // ByteMessage の to_bytes を呼び出し
+            UnifiedMessage::FileTransferMessage(msg) => msg.to_bytes(),
             UnifiedMessage::Exit(msg) => msg.to_bytes(), // TextMessage の to_bytes を呼び出し
         }
     }
@@ -226,7 +228,7 @@ impl BinaryDeserializable for TextMessage {
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct BinaryMessage {
-    pub author: String,
+    pub sender: String,
     pub room: i32,
     pub category: MessageType,
     pub content: Vec<u8>,
@@ -243,11 +245,11 @@ impl BinarySerializable for BinaryMessage {
         buffer.extend(&self.room.to_be_bytes());
 
         // 6バイト目: ユーザー名の長さ
-        let author_bytes = self.author.as_bytes();
-        buffer.push(author_bytes.len() as u8);
+        let sender_bytes = self.sender.as_bytes();
+        buffer.push(sender_bytes.len() as u8);
 
         // 7バイト以降: ユーザー名のバイト列
-        buffer.extend(author_bytes);
+        buffer.extend(sender_bytes);
 
         // メッセージ本文の長さ (u16、ビッグエンディアン形式)
         buffer.extend(&(self.content.len() as u16).to_be_bytes());
@@ -285,18 +287,18 @@ impl BinaryDeserializable for BinaryMessage {
         let room = i32::from_be_bytes(room_buf);
 
         // ユーザー名の長さ (1バイト: u8)
-        let mut author_len_buf = [0u8; 1];
+        let mut sender_len_buf = [0u8; 1];
         cursor
-            .read_exact(&mut author_len_buf)
+            .read_exact(&mut sender_len_buf)
             .map_err(|_| "Failed to read author length")?;
-        let author_len = author_len_buf[0] as usize;
+        let sender_len = sender_len_buf[0] as usize;
 
         // ユーザー名 (可変長)
-        let mut author_buf = vec![0u8; author_len];
+        let mut sender_buf = vec![0u8; sender_len];
         cursor
-            .read_exact(&mut author_buf)
+            .read_exact(&mut sender_buf)
             .map_err(|_| "Failed to read author")?;
-        let author = String::from_utf8(author_buf).map_err(|_| "Invalid UTF-8 in author")?;
+        let author = String::from_utf8(sender_buf).map_err(|_| "Invalid UTF-8 in author")?;
 
         // メッセージ本文の長さ (2バイト: u16)
         let mut message_len_buf = [0u8; 2];
@@ -320,10 +322,112 @@ impl BinaryDeserializable for BinaryMessage {
         // チェックサムの検証ロジックを追加する場合はここで計算
 
         Ok(Self {
-            author,
+            sender: author,
             room,
             category,
             content,
+        })
+    }
+}
+
+#[derive(Debug)]
+pub struct FileTransferMessage {
+    pub sender: String,
+    pub filename: String,
+    pub room: i32,
+    pub content: Vec<u8>,
+    pub category: MessageType,
+}
+
+impl BinarySerializable for FileTransferMessage {
+    fn to_bytes(&self) -> Vec<u8> {
+        let mut buffer: Vec<u8> = Vec::new();
+        buffer.push(0x03);
+        buffer.extend(&self.room.to_be_bytes());
+        buffer.push(self.sender.len() as u8);
+        buffer.extend(self.sender.as_bytes());
+        buffer.push(self.filename.len() as u8);
+        buffer.extend(self.filename.as_bytes());
+        buffer.extend(&(self.content.len() as u32).to_be_bytes());
+        buffer.extend(self.content.clone());
+        let checksum: u8 = buffer.iter().fold(0, |acc, &x| acc.wrapping_add(x));
+        buffer.push(checksum);
+        buffer
+    }
+}
+
+impl BinaryDeserializable for FileTransferMessage {
+    fn from_bytes(data: &[u8]) -> Result<Self, String>
+    where
+        Self: Sized,
+    {
+        let mut cursor = Cursor::new(data);
+
+        // カテゴリ (1バイト: u8)
+        let mut category_buf = [0u8; 1];
+        cursor
+            .read_exact(&mut category_buf)
+            .map_err(|_| "Failed to read category")?;
+        let category = MessageType::from_bytes(&category_buf[0])?;
+
+        println!("category: {:?}", category);
+
+        let mut room_buf = [0u8; 4];
+        cursor
+            .read_exact(&mut room_buf)
+            .map_err(|_| "Failed to read room")?;
+        let room = i32::from_be_bytes(room_buf);
+
+        println!("room: {:?}", room);
+
+        // 送信者名
+        let mut sender_len_buf = [0u8; 1];
+        cursor
+            .read_exact(&mut sender_len_buf)
+            .map_err(|_| "Failed to read sender length")?;
+        let sender_len = sender_len_buf[0] as usize;
+        let mut sender_buf = vec![0u8; sender_len];
+        cursor
+            .read_exact(&mut sender_buf)
+            .map_err(|_| "Failed to read sender")?;
+        let sender = String::from_utf8(sender_buf).map_err(|_| "Invalid UTF-8 in sender")?;
+
+        println!("sender: {:?}", sender);
+
+        // ファイル名
+        let mut filename_len_buf = [0u8; 1];
+        cursor
+            .read_exact(&mut filename_len_buf)
+            .map_err(|_| "Failed to read filename length")?;
+        let filename_len = filename_len_buf[0] as usize;
+        let mut filename_buf = vec![0u8; filename_len];
+        cursor
+            .read_exact(&mut filename_buf)
+            .map_err(|_| "Failed to read filename")?;
+        let filename = String::from_utf8(filename_buf).map_err(|_| "Invalid UTF-8 in filename")?;
+
+        // ファイル内容
+        let mut content_len_buf = [0u8; 4];
+        cursor
+            .read_exact(&mut content_len_buf)
+            .map_err(|_| "Failed to read content length")?;
+        let content_len = u32::from_be_bytes(content_len_buf) as usize;
+        let mut content_buf = vec![0u8; content_len];
+        cursor
+            .read_exact(&mut content_buf)
+            .map_err(|_| "Failed to read content")?;
+
+        let mut checksum_buf = [0u8; 1];
+        cursor
+            .read_exact(&mut checksum_buf)
+            .map_err(|_| "Failed to read checksum")?;
+
+        Ok(FileTransferMessage {
+            category,
+            room,
+            sender,
+            filename,
+            content: content_buf,
         })
     }
 }

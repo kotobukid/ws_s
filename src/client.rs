@@ -1,6 +1,6 @@
 use futures_util::{future, pin_mut, SinkExt, StreamExt};
 use message_pack::{
-    BinaryMessage, BinarySerializable, ExitMessage, MessageType, TextMessage, UnifiedMessage,
+    BinarySerializable, ExitMessage, FileTransferMessage, MessageType, TextMessage, UnifiedMessage,
 };
 use rfd::AsyncFileDialog;
 use rnglib::{Language, RNG};
@@ -90,16 +90,20 @@ async fn read_stdin(name: String, tx: futures_channel::mpsc::UnboundedSender<Mes
                 let file = AsyncFileDialog::new()
                     .add_filter("text", &["txt", "rs"])
                     .add_filter("rust", &["rs", "toml"])
+                    .add_filter("any file", &["*"])
                     .set_directory("/")
                     .pick_file()
                     .await;
 
                 if let Some(file) = file {
                     let bytes = file.read().await;
-                    Some(UnifiedMessage::BinaryMessage(BinaryMessage {
+                    println!("filename: {:?}", file.file_name());
+
+                    Some(UnifiedMessage::FileTransferMessage(FileTransferMessage {
                         category: MessageType::FileTransfer,
                         room: 42,
-                        author: name.clone(),
+                        filename: file.file_name(),
+                        sender: name.clone(),
                         content: bytes,
                     }))
                 } else {

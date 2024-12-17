@@ -1,10 +1,12 @@
 use futures_util::{SinkExt, StreamExt};
 use log::info;
-use message_pack::{BinaryMessage, MessageType, TextMessage, BinaryDeserializable, get_type};
+use message_pack::{get_type, BinaryDeserializable, FileTransferMessage, MessageType, TextMessage};
 use std::collections::HashMap;
 use std::env;
 use std::net::SocketAddrV4;
 use std::sync::Arc;
+use tokio::fs::File;
+use tokio::io::AsyncWriteExt;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::mpsc::Sender;
 use tokio::sync::Mutex;
@@ -171,10 +173,37 @@ async fn accept_connection(manager: Arc<Mutex<SocketManager>>, stream: TcpStream
                     }
                     MessageType::FileTransfer => {
                         // file transfer
-                        let d = BinaryMessage::from_bytes(&*m).unwrap();
+                        let d: FileTransferMessage = FileTransferMessage::from_bytes(&*m).unwrap();
+
                         match d.category {
                             MessageType::FileTransfer => {
-                                println!("received (file): {:?}", d);
+                                if d.filename.is_empty() {
+                                    eprintln!("Invalid filename received");
+                                    return;
+                                }
+
+                                let default_path = "./uploads"; // todo: あらかじめ作成して置かねばならないのを回避する
+                                let full_path = format!("{}/{}", default_path, d.filename);
+
+                                let transferred_bytes = format_bytes(d.content.len() as u64);
+                                println!(
+                                    "uploaded: {} {} bytes transferred.",
+                                    full_path,
+                                    transferred_bytes.clone()
+                                );
+                                let mut f = File::create(full_path).await.unwrap();
+
+                                f.write_all(&d.content).await.unwrap();
+
+                                {
+                                    let manager = manager_clone_3.lock().await;
+                                    manager
+                                        .direct_message(
+                                            uuid,
+                                            format!("{} bytes transferred.", transferred_bytes),
+                                        )
+                                        .await;
+                                } // ロックを解除
                             }
                             _ => {
                                 eprintln!("Invalid message category");
@@ -206,4 +235,23 @@ async fn accept_connection(manager: Arc<Mutex<SocketManager>>, stream: TcpStream
     });
 
     manager.lock().await.dump().await;
+}
+
+fn format_bytes(bytes: u64) -> String {
+    const KIB: u64 = 1024;
+    const MIB: u64 = KIB * 1024;
+    const GIB: u64 = MIB * 1024;
+    const TIB: u64 = GIB * 1024;
+
+    if bytes >= TIB {
+        format!("{:.2} TiB", bytes as f64 / TIB as f64)
+    } else if bytes >= GIB {
+        format!("{:.2} GiB", bytes as f64 / GIB as f64)
+    } else if bytes >= MIB {
+        format!("{:.2} MiB", bytes as f64 / MIB as f64)
+    } else if bytes >= KIB {
+        format!("{:.2} KiB", bytes as f64 / KIB as f64)
+    } else {
+        format!("{} B", bytes)
+    }
 }
