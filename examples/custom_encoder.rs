@@ -1,4 +1,4 @@
-use message_pack::{TextMessage, MessageType};
+use message_pack::{TextMessage, MessageType, BinarySerializable, BinaryDeserializable};
 use std::fs::File;
 use std::io::Write;
 
