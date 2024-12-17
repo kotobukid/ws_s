@@ -6,6 +6,7 @@ pub enum MessageType {
     Chat,
     Exit,
     FileTransfer,
+    Unknown,
 }
 
 impl MessageType {
@@ -14,6 +15,7 @@ impl MessageType {
             MessageType::Chat => 0x01,
             MessageType::Exit => 0x02,
             MessageType::FileTransfer => 0x03,
+            MessageType::Unknown => 0x00,
         }
     }
 
@@ -22,6 +24,7 @@ impl MessageType {
             0x01 => Ok(MessageType::Chat),
             0x02 => Ok(MessageType::Exit),
             0x03 => Ok(MessageType::FileTransfer),
+            0x00 => Ok(MessageType::Unknown),
             _ => Err("Invalid message category".to_string()),
         }
     }
@@ -33,6 +36,7 @@ impl Debug for MessageType {
             MessageType::Chat => write!(f, "ChatMessage"),
             MessageType::Exit => write!(f, "Exit"),
             MessageType::FileTransfer => write!(f, "FileTransfer"),
+            MessageType::Unknown => write!(f, "Unknown"),
         }
     }
 }
@@ -64,6 +68,15 @@ pub enum UnifiedMessage {
     ChatMessage(TextMessage),
     BinaryMessage(BinaryMessage),
     Exit(ExitMessage),
+}
+
+pub fn get_type(b: &u8) -> MessageType {
+    match b {
+        Some(0x01) => MessageType::Chat,
+        Some(0x02) => MessageType::Exit,
+        Some(0x03) => MessageType::FileTransfer,
+        _ => MessageType::Unknown,
+    }
 }
 
 impl BinarySerializable for UnifiedMessage {
@@ -100,6 +113,7 @@ impl BinaryDeserializable for UnifiedMessage {
                 let message = BinaryMessage::from_bytes(data)?;
                 Ok(UnifiedMessage::BinaryMessage(message))
             }
+            _ => Err("Invalid message category".to_string()),
         }
     }
 }

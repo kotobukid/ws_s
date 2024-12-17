@@ -1,6 +1,6 @@
 use futures_util::{SinkExt, StreamExt};
 use log::info;
-use message_pack::{BinaryMessage, MessageType, TextMessage, BinaryDeserializable};
+use message_pack::{BinaryMessage, MessageType, TextMessage, BinaryDeserializable, get_type};
 use std::collections::HashMap;
 use std::env;
 use std::net::SocketAddrV4;
@@ -125,8 +125,8 @@ async fn accept_connection(manager: Arc<Mutex<SocketManager>>, stream: TcpStream
             } else if msg.is_binary() {
                 let m: Vec<u8> = msg.into_data();
 
-                match &m[0] {
-                    0x01 => {
+                match get_type(&m[0]) {
+                    MessageType::Chat => {
                         // chat
                         let chat_message = TextMessage::from_bytes(&*m).unwrap();
                         // チャットメッセージを何らかの形で文字列に変換してブロードキャスト
@@ -139,7 +139,7 @@ async fn accept_connection(manager: Arc<Mutex<SocketManager>>, stream: TcpStream
                         let manager = manager_clone_1.lock().await; // ロックを取得
                         manager.broadcast(message_string.clone()).await;
                     }
-                    0x02 => {
+                    MessageType::Exit => {
                         // exit
                         // let d = TextMessage::from_bytes(&*m).unwrap();
                         println!("received exit message");
@@ -160,7 +160,7 @@ async fn accept_connection(manager: Arc<Mutex<SocketManager>>, stream: TcpStream
                         // スレッド終了
                         break;
                     }
-                    0x03 => {
+                    MessageType::FileTransfer => {
                         // file transfer
                         let d = BinaryMessage::from_bytes(&*m).unwrap();
                         match d.category {
