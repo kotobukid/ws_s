@@ -3,7 +3,7 @@ use std::str::Chars;
 
 fn parse_arguments(input: &str) -> Result<Vec<String>, String> {
     let mut args: Vec<String> = Vec::new();
-    let mut current_arg: String = String::new();
+    let mut current_arg: String = String::with_capacity(input.len());
     let mut chars: Peekable<Chars> = input.chars().peekable();
     let mut in_quotes: Option<char> = None;
 
@@ -54,7 +54,7 @@ fn parse_arguments(input: &str) -> Result<Vec<String>, String> {
 }
 
 fn replace_full_width_spaces_to_half_width_spaces_if_not_in_quotes(input: &str) -> String {
-    let mut output = String::new();
+    let mut output = String::with_capacity(input.len());
     let mut in_quotes: Option<char> = None;
     let mut chars = input.chars();
 
