@@ -252,11 +252,11 @@ async fn accept_connection(manager: Arc<Mutex<SocketManager>>, stream: TcpStream
                         match d.target.as_str() {
                             "socket" => {
                                 let manager = manager_clone_3.lock().await;
-                                let mut message = String::new();
+                                let mut messages: Vec<String> = Vec::new();
                                 for (id, _socket_wrapper) in manager.sockets.lock().await.iter() {
-                                    message.push_str(&format!("{}\n", id));
+                                    messages.push(format!("{}", id));
                                 }
-                                manager.direct_message(uuid, message).await;
+                                manager.direct_message(uuid, messages.join("\n")).await;
                             }
                             _ => {
                                 let manager = manager_clone_3.lock().await;
