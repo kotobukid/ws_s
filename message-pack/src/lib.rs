@@ -6,6 +6,7 @@ pub enum MessageType {
     Chat,
     Exit,
     FileTransfer,
+    List,
     Unknown,
 }
 
@@ -15,6 +16,7 @@ impl MessageType {
             MessageType::Chat => 0x01,
             MessageType::Exit => 0x02,
             MessageType::FileTransfer => 0x03,
+            MessageType::List => 0x04,
             MessageType::Unknown => 0x00,
         }
     }
@@ -24,8 +26,9 @@ impl MessageType {
             0x01 => Ok(MessageType::Chat),
             0x02 => Ok(MessageType::Exit),
             0x03 => Ok(MessageType::FileTransfer),
+            0x04 => Ok(MessageType::List),
             0x00 => Ok(MessageType::Unknown),
-            _ => Err("Invalid message category".to_string()),
+            _ => Err("Invalid message category (1)".to_string()),
         }
     }
 }
@@ -36,6 +39,7 @@ impl Debug for MessageType {
             MessageType::Chat => write!(f, "ChatMessage"),
             MessageType::Exit => write!(f, "Exit"),
             MessageType::FileTransfer => write!(f, "FileTransfer"),
+            MessageType::List => write!(f, "List"),
             MessageType::Unknown => write!(f, "Unknown"),
         }
     }
@@ -68,6 +72,7 @@ pub enum UnifiedMessage {
     ChatMessage(TextMessage),
     BinaryMessage(BinaryMessage),
     FileTransferMessage(FileTransferMessage),
+    ListMessage(ListMessage),
     Exit(ExitMessage),
 }
 
@@ -76,6 +81,7 @@ pub fn get_type(b: &u8) -> MessageType {
         0x01 => MessageType::Chat,
         0x02 => MessageType::Exit,
         0x03 => MessageType::FileTransfer,
+        0x04 => MessageType::List,
         _ => MessageType::Unknown,
     }
 }
@@ -86,6 +92,7 @@ impl BinarySerializable for UnifiedMessage {
             UnifiedMessage::ChatMessage(msg) => msg.to_bytes(), // TextMessage の to_bytes を呼び出し
             UnifiedMessage::BinaryMessage(msg) => msg.to_bytes(), // ByteMessage の to_bytes を呼び出し
             UnifiedMessage::FileTransferMessage(msg) => msg.to_bytes(),
+            UnifiedMessage::ListMessage(msg) => msg.to_bytes(),
             UnifiedMessage::Exit(msg) => msg.to_bytes(), // TextMessage の to_bytes を呼び出し
         }
     }
@@ -115,7 +122,11 @@ impl BinaryDeserializable for UnifiedMessage {
                 let message = BinaryMessage::from_bytes(data)?;
                 Ok(UnifiedMessage::BinaryMessage(message))
             }
-            _ => Err("Invalid message category".to_string()),
+            MessageType::List => {
+                let message = ListMessage::from_bytes(data)?;
+                Ok(UnifiedMessage::ListMessage(message))
+            }
+            _ => Err("Invalid message category (2)".to_string()),
         }
     }
 }
@@ -452,6 +463,95 @@ impl BinarySerializable for ExitMessage {
 //         }
 //     }
 // }
+
+#[derive(Debug)]
+pub struct ListMessage {
+    pub sender: String,
+    pub target: String,
+    pub room: i32,
+    pub category: MessageType,
+}
+
+impl BinarySerializable for ListMessage {
+    fn to_bytes(&self) -> Vec<u8> {
+        let mut buffer: Vec<u8> = Vec::new();
+        buffer.push(0x04);
+        buffer.extend(&self.room.to_be_bytes());
+        buffer.push(self.sender.len() as u8);
+        buffer.extend(self.sender.as_bytes());
+        buffer.push(self.target.len() as u8);
+        buffer.extend(self.target.as_bytes());
+
+        let checksum: u8 = buffer.iter().fold(0, |acc, &x| acc.wrapping_add(x));
+        buffer.push(checksum);
+
+        buffer
+    }
+}
+
+impl BinaryDeserializable for ListMessage {
+    fn from_bytes(data: &[u8]) -> Result<Self, String>
+    where
+        Self: Sized,
+    {
+        let mut cursor = Cursor::new(data);
+
+        // カテゴリ (1バイト: u8)
+        let mut category_buf = [0u8; 1];
+        cursor
+            .read_exact(&mut category_buf)
+            .map_err(|_| "Failed to read category")?;
+        let category = MessageType::from_bytes(&category_buf[0])?;
+
+        println!("category: {:?}", category);
+
+        let mut room_buf = [0u8; 4];
+        cursor
+            .read_exact(&mut room_buf)
+            .map_err(|_| "Failed to read room")?;
+        let room = i32::from_be_bytes(room_buf);
+
+        println!("room: {:?}", room);
+
+        // 送信者名
+        let mut sender_len_buf = [0u8; 1];
+        cursor
+            .read_exact(&mut sender_len_buf)
+            .map_err(|_| "Failed to read sender length")?;
+        let sender_len = sender_len_buf[0] as usize;
+        let mut sender_buf = vec![0u8; sender_len];
+        cursor
+            .read_exact(&mut sender_buf)
+            .map_err(|_| "Failed to read sender")?;
+        let sender = String::from_utf8(sender_buf).map_err(|_| "Invalid UTF-8 in sender")?;
+
+        println!("sender: {:?}", sender);
+
+        // リスト対象
+        let mut target_len_buf = [0u8; 1];
+        cursor
+            .read_exact(&mut target_len_buf)
+            .map_err(|_| "Failed to read target length")?;
+        let target_len = target_len_buf[0] as usize;
+        let mut target_buf = vec![0u8; target_len];
+        cursor
+            .read_exact(&mut target_buf)
+            .map_err(|_| "Failed to read target")?;
+        let target = String::from_utf8(target_buf).map_err(|_| "Invalid UTF-8 in target")?;
+
+        let mut checksum_buf = [0u8; 1];
+        cursor
+            .read_exact(&mut checksum_buf)
+            .map_err(|_| "Failed to read checksum")?;
+
+        Ok(ListMessage {
+            category,
+            room,
+            sender,
+            target,
+        })
+    }
+}
 
 #[cfg(test)]
 mod tests {

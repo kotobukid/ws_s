@@ -1,6 +1,8 @@
 use futures_util::{SinkExt, StreamExt};
 use log::info;
-use message_pack::{get_type, BinaryDeserializable, FileTransferMessage, MessageType, TextMessage};
+use message_pack::{
+    get_type, BinaryDeserializable, FileTransferMessage, ListMessage, MessageType, TextMessage,
+};
 use std::collections::HashMap;
 use std::fs::exists;
 use std::net::SocketAddrV4;
@@ -240,12 +242,31 @@ async fn accept_connection(manager: Arc<Mutex<SocketManager>>, stream: TcpStream
                                 } // ロックを解除
                             }
                             _ => {
-                                eprintln!("Invalid message category");
+                                eprintln!("Invalid message category (3)");
+                            }
+                        }
+                    }
+                    MessageType::List => {
+                        let d: ListMessage = ListMessage::from_bytes(&*m).unwrap();
+
+                        match d.target.as_str() {
+                            "socket" => {
+                                let manager = manager_clone_3.lock().await;
+                                let mut message = String::new();
+                                for (id, _socket_wrapper) in manager.sockets.lock().await.iter() {
+                                    message.push_str(&format!("{}\n", id));
+                                }
+                                manager.direct_message(uuid, message).await;
+                            }
+                            _ => {
+                                let manager = manager_clone_3.lock().await;
+                                let message = "Invalid target";
+                                manager.direct_message(uuid, message.to_string()).await;
                             }
                         }
                     }
                     _ => {
-                        eprintln!("Invalid message category");
+                        eprintln!("Invalid message category (4)");
                     }
                 }
             }

@@ -1,6 +1,7 @@
 use futures_util::{future, pin_mut, SinkExt, StreamExt};
 use message_pack::{
-    BinarySerializable, ExitMessage, FileTransferMessage, MessageType, TextMessage, UnifiedMessage,
+    BinarySerializable, ExitMessage, FileTransferMessage, ListMessage, MessageType, TextMessage,
+    UnifiedMessage,
 };
 use rfd::AsyncFileDialog;
 use rnglib::{Language, RNG};
@@ -85,8 +86,8 @@ async fn read_stdin(name: String, tx: futures_channel::mpsc::UnboundedSender<Mes
         };
 
         let chat_message: Option<UnifiedMessage> = match input.trim() {
-            "exit" => Some(UnifiedMessage::Exit(ExitMessage {})),
-            "file" => {
+            "/exit" => Some(UnifiedMessage::Exit(ExitMessage {})),
+            "/file" => {
                 let file = AsyncFileDialog::new()
                     .add_filter("text", &["txt", "rs"])
                     .add_filter("rust", &["rs", "toml"])
@@ -110,6 +111,12 @@ async fn read_stdin(name: String, tx: futures_channel::mpsc::UnboundedSender<Mes
                     None
                 }
             }
+            "/list" => Some(UnifiedMessage::ListMessage(ListMessage {
+                category: MessageType::List,
+                room: 42,
+                target: "socket".to_string(),
+                sender: name.clone(),
+            })),
             _ => Some(UnifiedMessage::ChatMessage(TextMessage {
                 sender: name.clone(),
                 room: 42, // 仮のルーム番号
