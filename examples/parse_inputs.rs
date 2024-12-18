@@ -57,35 +57,52 @@ fn replace_full_width_spaces_to_half_width_spaces_if_not_in_quotes(input: &str) 
     let mut output = String::with_capacity(input.len());
     let mut in_quotes: Option<char> = None;
     let mut chars = input.chars();
+    let mut last_was_space = false;
 
     while let Some(c) = chars.next() {
         match c {
             '\'' | '"' => {
                 if Some(c) == in_quotes {
                     in_quotes = None;
-
-                    // この関数はクオートを置換したりしない
                     output.push(c);
                 } else if in_quotes.is_none() {
                     in_quotes = Some(c);
-                    // 同上
                     output.push(c);
                 } else {
                     output.push(c);
                 }
+                last_was_space = false;
             }
             '　' => {
-                // 全角スペース
                 if in_quotes.is_none() {
-                    output.push(' ');
+                    if !last_was_space && !output.is_empty() {
+                        output.push(' ');
+                        last_was_space = true;
+                    }
+                } else {
+                    output.push(c);
+                }
+            }
+            ' ' => {
+                if in_quotes.is_none() {
+                    if !last_was_space && !output.is_empty() {
+                        output.push(c);
+                        last_was_space = true;
+                    }
                 } else {
                     output.push(c);
                 }
             }
             _ => {
                 output.push(c);
+                last_was_space = false;
             }
         }
+    }
+
+    // ここで末尾の不要なスペースを削除する
+    if in_quotes.is_none() {
+        output = output.trim_end().to_string();
     }
 
     output
@@ -202,4 +219,22 @@ mod tests {
             panic!("Expected an error but got Ok");
         }
     }
+}
+
+#[test]
+fn test_replace_full_width_spaces_with_leading_spaces() {
+    let input1 = "    first second";
+    let input2 = "　　first　second　third";
+    let input3 = "    'quoted   string'   ";
+    let input4 = " 　"; // スペースだけの入力
+
+    let output1 = replace_full_width_spaces_to_half_width_spaces_if_not_in_quotes(input1);
+    let output2 = replace_full_width_spaces_to_half_width_spaces_if_not_in_quotes(input2);
+    let output3 = replace_full_width_spaces_to_half_width_spaces_if_not_in_quotes(input3);
+    let output4 = replace_full_width_spaces_to_half_width_spaces_if_not_in_quotes(input4);
+
+    assert_eq!(output1, "first second");
+    assert_eq!(output2, "first second third");
+    assert_eq!(output3, "'quoted   string'");
+    assert_eq!(output4, ""); // スペースだけの入力は空文字になる
 }
