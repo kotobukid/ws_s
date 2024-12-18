@@ -8,6 +8,9 @@ use rnglib::{Language, RNG};
 use std::env;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
+use ws_s::utils::{
+    parse_arguments, replace_full_width_spaces_to_half_width_spaces_if_not_in_quotes,
+};
 
 #[tokio::main]
 async fn main() {
@@ -85,52 +88,76 @@ async fn read_stdin(name: String, tx: futures_channel::mpsc::UnboundedSender<Mes
             }
         };
 
-        let chat_message: Option<UnifiedMessage> = match input.trim() {
-            "/exit" => Some(UnifiedMessage::Exit(ExitMessage {})),
-            "/file" => {
-                let file = AsyncFileDialog::new()
-                    .add_filter("text", &["txt", "rs"])
-                    .add_filter("rust", &["rs", "toml"])
-                    .add_filter("any file", &["*"])
-                    .set_directory("/")
-                    .pick_file()
-                    .await;
+        let tokens: Result<Vec<String>, String> = parse_arguments(
+            replace_full_width_spaces_to_half_width_spaces_if_not_in_quotes(&input).as_str(),
+        );
 
-                if let Some(file) = file {
-                    let bytes = file.read().await;
-                    println!("filename: {:?}", file.file_name());
+        match tokens {
+            Ok(tokens) => {
+                if tokens.len() > 0 {
+                    let command = tokens[0].as_str();
+                    let args = &tokens[1..];
 
-                    Some(UnifiedMessage::FileTransferMessage(FileTransferMessage {
-                        category: MessageType::FileTransfer,
-                        room: 42,
-                        filename: file.file_name(),
-                        sender: name.clone(),
-                        content: bytes,
-                    }))
-                } else {
-                    None
+                    let chat_message: Option<UnifiedMessage> = match command {
+                        "/exit" => Some(UnifiedMessage::Exit(ExitMessage {})),
+                        "/file" => {
+                            let file = AsyncFileDialog::new()
+                                .add_filter("text", &["txt", "rs"])
+                                .add_filter("rust", &["rs", "toml"])
+                                .add_filter("any file", &["*"])
+                                .set_directory("/")
+                                .pick_file()
+                                .await;
+
+                            if let Some(file) = file {
+                                let bytes = file.read().await;
+                                println!("filename: {:?}", file.file_name());
+
+                                Some(UnifiedMessage::FileTransferMessage(FileTransferMessage {
+                                    category: MessageType::FileTransfer,
+                                    room: 42,
+                                    filename: file.file_name(),
+                                    sender: name.clone(),
+                                    content: bytes,
+                                }))
+                            } else {
+                                None
+                            }
+                        }
+                        "/list" => {
+                            let target = if args.len() > 0 {
+                                args[0].as_str()
+                            } else {
+                                "socket"
+                            };
+
+                            Some(UnifiedMessage::ListMessage(ListMessage {
+                                category: MessageType::List,
+                                room: 42,
+                                target: target.to_string(),
+                                sender: name.clone(),
+                            }))
+                        }
+                        _ => Some(UnifiedMessage::ChatMessage(TextMessage {
+                            sender: name.clone(),
+                            room: 42, // 仮のルーム番号
+                            category: MessageType::Chat,
+                            content: input.trim().to_string(), // 標準入力からのメッセージ
+                        })),
+                    };
+
+                    if let Some(chat_message) = chat_message {
+                        // ChatMessage をバイナリ形式にエンコード
+                        let binary_data = chat_message.to_bytes();
+
+                        // バイナリデータを WebSocket メッセージとして送信
+                        tx.unbounded_send(Message::binary(binary_data)).unwrap();
+                    }
                 }
             }
-            "/list" => Some(UnifiedMessage::ListMessage(ListMessage {
-                category: MessageType::List,
-                room: 42,
-                target: "socket".to_string(),
-                sender: name.clone(),
-            })),
-            _ => Some(UnifiedMessage::ChatMessage(TextMessage {
-                sender: name.clone(),
-                room: 42, // 仮のルーム番号
-                category: MessageType::Chat,
-                content: input.trim().to_string(), // 標準入力からのメッセージ
-            })),
-        };
-
-        if let Some(chat_message) = chat_message {
-            // ChatMessage をバイナリ形式にエンコード
-            let binary_data = chat_message.to_bytes();
-
-            // バイナリデータを WebSocket メッセージとして送信
-            tx.unbounded_send(Message::binary(binary_data)).unwrap();
+            Err(e) => {
+                eprintln!("Error: {}", e);
+            }
         }
     }
 }
