@@ -2,9 +2,10 @@ use futures_util::{SinkExt, StreamExt};
 use log::info;
 use message_pack::{get_type, BinaryDeserializable, FileTransferMessage, MessageType, TextMessage};
 use std::collections::HashMap;
-use std::env;
+use std::fs::exists;
 use std::net::SocketAddrV4;
 use std::sync::Arc;
+use std::{env, fs};
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use tokio::net::{TcpListener, TcpStream};
@@ -73,13 +74,46 @@ impl SocketManager {
     }
 }
 
+const UPLOAD_DIRNAME: &str = "./uploads";
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let addr: SocketAddrV4 = env::args()
         .nth(1)
         .unwrap_or_else(|| "127.0.0.1:8080".parse().unwrap())
         .parse()?;
-    // let addr: SocketAddrV4 = "192.168.1.187:8080".parse()?;
+
+    match exists(UPLOAD_DIRNAME) {
+        Ok(true) => match fs::metadata(UPLOAD_DIRNAME) {
+            Ok(metadata) => {
+                if !metadata.is_dir() {
+                    eprintln!("Error: {} is not a directory", UPLOAD_DIRNAME);
+                    std::process::exit(1);
+                } else {
+                    // do nothing
+                }
+            }
+            Err(_) => {
+                eprintln!("Error: cannot check is {} a directory", UPLOAD_DIRNAME);
+                std::process::exit(1);
+            }
+        },
+        Ok(false) => {
+            if let Err(_) = fs::create_dir(UPLOAD_DIRNAME) {
+                eprintln!("Error: creating directory {}", UPLOAD_DIRNAME);
+                std::process::exit(1);
+            } else {
+                println!("Directory {} is created", UPLOAD_DIRNAME);
+            }
+        }
+        Err(_) => match fs::create_dir(UPLOAD_DIRNAME) {
+            Err(e) => {
+                eprintln!("Error: {}", e);
+                std::process::exit(1);
+            }
+            _ => {}
+        },
+    }
 
     let socket: std::io::Result<TcpListener> = TcpListener::bind(&addr).await;
     let listener: TcpListener = socket.expect("Failed to bind socket");
@@ -182,7 +216,7 @@ async fn accept_connection(manager: Arc<Mutex<SocketManager>>, stream: TcpStream
                                     return;
                                 }
 
-                                let default_path = "./uploads"; // todo: あらかじめ作成しておかねばならないのを回避する
+                                let default_path = UPLOAD_DIRNAME.to_string();
                                 let full_path = format!("{}/{}", default_path, d.filename);
 
                                 let transferred_bytes = format_bytes(d.content.len() as u64);
