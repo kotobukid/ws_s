@@ -1,11 +1,11 @@
 use crossterm::{
     event::{Event, KeyCode},
-    terminal::{self, ClearType},
-    ExecutableCommand, QueueableCommand,
+    terminal::{self},
+    ExecutableCommand,
 };
 use std::io::{self, Write};
-
-use log::{info, LevelFilter};
+use crossterm::terminal::ClearType;
+use log::{LevelFilter};
 use simple_logger::SimpleLogger;
 
 fn main() -> io::Result<()> {
@@ -83,6 +83,7 @@ fn main() -> io::Result<()> {
     Ok(())
 }
 
+#[allow(unused_variables)]
 fn print_menu(
     stdout: &mut io::Stdout,
     start_pos: (u16, u16),
@@ -92,12 +93,12 @@ fn print_menu(
 ) -> io::Result<()> {
     // カーソルを初期の表示位置に移動
     stdout
-        .execute(crossterm::cursor::MoveTo(start_pos.0, start_pos.1))?
-        .execute(terminal::Clear(ClearType::FromCursorDown))?; // そこから下をクリア
+        .execute(crossterm::cursor::MoveTo(0, 0))?
+        .execute(terminal::Clear(ClearType::FromCursorDown))?;
 
     // プロンプトを表示
     if let Some(prompt) = prompt {
-        writeln!(stdout, "{} {}, {}", prompt, start_pos.0, start_pos.1)?;
+        writeln!(stdout, "{}", prompt)?;
     }
 
     // 選択肢を表示
