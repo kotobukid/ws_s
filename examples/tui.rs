@@ -7,7 +7,17 @@ use crossterm::{
     QueueableCommand,
 };
 
+use log::{info, LevelFilter};
+use simple_logger::SimpleLogger;
+
+
 fn main() -> io::Result<()> {
+    // ログ初期化
+    SimpleLogger::new().with_level(LevelFilter::Info).init().unwrap();
+
+    // 確認用ログ
+    info!("プログラムが開始されました");
+
     // 選択肢
     let options = vec!["Javascript", "Typescript"];
     let mut selected = 0;
@@ -19,63 +29,52 @@ fn main() -> io::Result<()> {
     // 初期表示
     print_menu(&mut stdout, &options, selected)?;
 
+    // 標準入力が接続されていない場合は終了させる
+    if !atty::is(atty::Stream::Stdin) {
+        eprintln!("このプログラムは標準入力が必要です。");
+        return Ok(());
+    } else {
+        println!("標準入力を使用可能です。");
+    }
+
+    // イベントループ中にログを追加します（下記参照）
     loop {
-        if let Event::Key(event) = event::read()? {
-            match event.code {
-                KeyCode::Up => {
-                    if selected > 0 {
-                        selected -= 1;
+        if let Ok(ev) = event::read() {
+            info!("Received event: {:?}", ev);
+            match ev {
+                Event::Key(key_event) => {
+                    info!("キーイベント: {:?}", key_event);
+                    // 残りの処理...
+                    if key_event.code == KeyCode::Char('c') {
+                        terminal::disable_raw_mode()?;
+                        println!("中断されました");
+                        break;
                     }
-                }
-                KeyCode::Down => {
-                    if selected < options.len() - 1 {
-                        selected += 1;
-                    }
-                }
-                KeyCode::Enter => {
-                    // 選択完了
-                    terminal::disable_raw_mode()?;
-                    stdout.execute(cursor::MoveDown(1))?;
-                    println!("選択された項目: {}", options[selected]);
-                    break;
-                }
-                KeyCode::Char('c') if event.modifiers.contains(event::KeyModifiers::CONTROL) => {
-                    // Ctrl+C で終了
-                    terminal::disable_raw_mode()?;
-                    stdout.execute(cursor::MoveDown(1))?;
-                    println!("中断されました");
-                    break;
-                }
+                },
                 _ => {}
             }
-
-            print_menu(&mut stdout, &options, selected)?;
+        } else {
+            info!("Event reading failed or returned null");
         }
     }
 
+    terminal::disable_raw_mode()?;
     Ok(())
 }
 
 fn print_menu(stdout: &mut io::Stdout, options: &[&str], selected: usize) -> io::Result<()> {
-    // カーソルを先頭に移動して画面をクリア
+    // 画面全体をクリア
     stdout
-        .queue(cursor::SavePosition)?
-        .queue(cursor::MoveTo(0, 0))?;
+        .execute(terminal::Clear(ClearType::All))?
+        .execute(crossterm::cursor::MoveTo(0, 0))?;
 
     for (i, option) in options.iter().enumerate() {
-        stdout
-            .queue(terminal::Clear(ClearType::CurrentLine))?;
-
         if i == selected {
-            println!("\r> {}", option);
+            writeln!(stdout, "> {}", option)?;
         } else {
-            println!("\r  {}", option);
+            writeln!(stdout, "  {}", option)?;
         }
     }
-
-    stdout
-        .queue(cursor::RestorePosition)?
-        .flush()?;
-
+    stdout.flush()?;
     Ok(())
 }

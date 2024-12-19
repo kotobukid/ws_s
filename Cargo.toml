@@ -23,4 +23,6 @@ message-pack = {path = "message-pack"}
 random_name_generator = "0.3.6"
 rfd = "0.15.1"
 crossterm = "0.28.1"
+atty = "0.2.14"
+simple_logger = "5.0.0"
 
