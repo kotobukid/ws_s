@@ -21,6 +21,7 @@ use tokio::io::AsyncWriteExt;
 use tokio::net::TcpListener;
 use tokio::sync::mpsc::Sender;
 use tokio::sync::{mpsc, Mutex};
+use tower_http::services::ServeDir;
 use tower_http::cors::{Any, CorsLayer};
 use uuid::Uuid;
 
@@ -139,10 +140,7 @@ async fn main() -> anyhow::Result<()> {
     let cors = cors_handler().await;
 
     let app = axum::Router::new()
-        .route(
-            "/",
-            axum::routing::get(|| async { Html("Hello world".to_string()) }),
-        )
+        .nest_service("/", ServeDir::new("./front/dist"))
         .route(
             "/api/health.json",
             axum::routing::get(|| async { Json("{\"success\": \"true\"}") }),
