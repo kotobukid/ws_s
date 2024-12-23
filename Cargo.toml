@@ -19,10 +19,11 @@ tokio = { version = "1.42.0", features = ["full"] }
 tokio-tungstenite = "0.24.0"
 futures-channel = "0.3.31"
 uuid = { version = "1.11.0", features = ["v4"] }
-message-pack = {path = "message-pack"}
+message-pack = { path = "message-pack" }
 random_name_generator = "0.3.6"
 rfd = "0.15.1"
 crossterm = "0.28.1"
 atty = "0.2.14"
 simple_logger = "5.0.0"
+axum = { version = "0.7.9", features = ["ws"] }
 
