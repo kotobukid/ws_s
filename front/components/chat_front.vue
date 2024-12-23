@@ -1,9 +1,15 @@
 <script setup lang="ts">
-import {onMounted, type Ref, ref} from "vue";
+import {onMounted, ref} from "vue";
 import {useWS} from "~/composables/websocket";
+import {useRuntimeConfig} from '#imports';
 
 const {connect} = useWS();
-const ws: WebSocket = connect();
+const config = useRuntimeConfig();
+
+let ws_url = config.public.wsHost as string;
+
+const ws: WebSocket = connect(ws_url);
+
 const message = ref('');
 const last_log = ref('')
 
@@ -19,13 +25,6 @@ const binary_to_str = (() => {
 })();
 
 onMounted(() => {
-  // ws.value = new WebSocket('http://localhost:8080/ws'); // OK
-  // ws.value = new WebSocket('ws://localhost:8080/ws'); // OK
-  // ws.value = new WebSocket('ws://localhost:3000/ws'); //  NG
-  // ws.value = new WebSocket('http://127.0.0.1:3000/ws'); //
-  // ws.value = new WebSocket('http://localhost:3000/ws');
-  // ws.value = new WebSocket(`${location.hostname}/ws`);
-
   ws.onmessage = (event) => {
 
     // データの型を確認

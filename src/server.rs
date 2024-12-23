@@ -1,7 +1,9 @@
 use axum::extract::ws::{Message, WebSocket};
 use axum::extract::State;
 use axum::extract::WebSocketUpgrade;
+use axum::http::Method;
 use axum::response::Html;
+use axum::Json;
 use futures_util::{SinkExt, StreamExt};
 use log::{info, warn};
 use message_pack::{
@@ -11,17 +13,16 @@ use std::collections::HashMap;
 use std::fs::exists;
 use std::net::SocketAddrV4;
 use std::sync::Arc;
-use std::{env, fs};
 use std::time::Duration;
-use axum::http::Method;
-use axum::Json;
+use std::{env, fs};
+use simple_logger::SimpleLogger;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
-use tokio::net::{TcpListener};
+use tokio::net::TcpListener;
 use tokio::sync::mpsc::Sender;
 use tokio::sync::{mpsc, Mutex};
-use uuid::Uuid;
 use tower_http::cors::{Any, CorsLayer};
+use uuid::Uuid;
 
 struct SocketWrapper {
     id: Uuid,
@@ -74,6 +75,7 @@ impl SocketManager {
         }
     }
 
+    #[allow(dead_code)]
     async fn dump(&self) {
         let sockets = self.sockets.lock().await; // 非同期ロックを取得
         info!("Current sockets:");
@@ -88,6 +90,10 @@ const UPLOAD_DIRNAME: &str = "./uploads";
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    SimpleLogger::new()
+        .with_level(log::LevelFilter::Info) // デフォルトログレベル (Info以上のみ出力)
+        .init()?;
+
     let addr: SocketAddrV4 = env::args()
         .nth(1)
         .unwrap_or_else(|| "127.0.0.1:8080".parse().unwrap())
@@ -137,7 +143,10 @@ async fn main() -> anyhow::Result<()> {
             "/",
             axum::routing::get(|| async { Html("Hello world".to_string()) }),
         )
-        .route("/api/health.json", axum::routing::get(|| async { Json("{\"success\": \"true\"}") }))
+        .route(
+            "/api/health.json",
+            axum::routing::get(|| async { Json("{\"success\": \"true\"}") }),
+        )
         .route("/ws", axum::routing::get(handle_websocket))
         .layer(cors)
         .with_state(socket_manager);
