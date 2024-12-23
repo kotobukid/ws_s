@@ -12,12 +12,16 @@ use std::fs::exists;
 use std::net::SocketAddrV4;
 use std::sync::Arc;
 use std::{env, fs};
+use std::time::Duration;
+use axum::http::Method;
+use axum::Json;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use tokio::net::{TcpListener};
 use tokio::sync::mpsc::Sender;
 use tokio::sync::{mpsc, Mutex};
 use uuid::Uuid;
+use tower_http::cors::{Any, CorsLayer};
 
 struct SocketWrapper {
     id: Uuid,
@@ -81,94 +85,6 @@ impl SocketManager {
 }
 
 const UPLOAD_DIRNAME: &str = "./uploads";
-const SCRIPT: &str = r#"
-<head>
-<meta charset="utf-8">
-<title>WebSocket</title>
-<script>
-window.onload = () => {
-
-    const str_to_binary = (() => {
-        const encoder = new TextEncoder();
-        const encode = encoder.encode;
-        return (str) => encoder.encode(str);
-    })();
-
-    const binary_to_str = (() => {
-        const decoder = new TextDecoder();
-        const decode = decoder.decode;
-        return (bin) => decoder.decode(bin);
-    })();
-
-    const ws = new WebSocket(`${location.origin}/ws`);
-
-    ws.onmessage = (event) => {
-
-        // データの型を確認
-        if (event.data instanceof Blob) {
-            // バイナリデータの場合
-            event.data.arrayBuffer().then(buffer => {
-                const uint8Array = new Uint8Array(buffer);
-
-                // ここでバイナリデータを処理
-                // 例：最初の1バイトを見て処理を分岐
-                // const firstByte = uint8Array[0];
-
-                // 残りのデータをテキストとして処理する例
-                // const decoder = new TextDecoder();
-                // const text = decoder.decode(uint8Array.slice(1));
-
-                const text = binary_to_str(uint8Array);
-
-                document.getElementById('output').innerText = `binary(${text})`;
-            });
-        } else {
-            // テキストデータの場合
-            console.log(event.data);
-            document.getElementById('output').innerText = `text(${event.data})`;
-        }
-    };
-
-    ws.addEventListener('close', () => {
-        console.log('closed(client)');
-    });
-
-    ws.addEventListener('open', () => {
-        console.log('connected(client)');
-        ws.send("hello");
-    });
-
-    document.getElementById('send_button').onclick = (e) => {
-        e.preventDefault();e.preventDefault();
-        let value = document.getElementById('input').value.trim();
-        if (value) {
-            ws.send(value);
-            document.getElementById('input').value = '';
-        }
-    };
-
-    document.getElementById('send_button2').onclick = (e) => {
-        e.preventDefault();e.preventDefault();
-        let value = document.getElementById('input').value.trim();
-        if (value) {
-            let v = str_to_binary(value);
-            ws.send(v);
-            document.getElementById('input').value = '';
-        }
-    }
-};
-</script>
-</head>
-<body>
-    <form>
-        <input type="text" id="input" />
-        <button id="send_button">send</button>
-        <button id="send_button2">send as binary</button>
-        <br />
-        <span id="output"></span>
-    </form>
-</body>
-"#;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -214,12 +130,16 @@ async fn main() -> anyhow::Result<()> {
 
     let socket_manager = Arc::new(Mutex::new(SocketManager::new()));
 
+    let cors = cors_handler().await;
+
     let app = axum::Router::new()
         .route(
             "/",
-            axum::routing::get(|| async { Html(SCRIPT.to_string()) }),
+            axum::routing::get(|| async { Html("Hello world".to_string()) }),
         )
+        .route("/api/health.json", axum::routing::get(|| async { Json("{\"success\": \"true\"}") }))
         .route("/ws", axum::routing::get(handle_websocket))
+        .layer(cors)
         .with_state(socket_manager);
 
     let _ = axum::serve(listener, app.into_make_service()).await?;
@@ -414,4 +334,19 @@ fn format_bytes(bytes: u64) -> String {
     } else {
         format!("{} B", bytes)
     }
+}
+
+pub async fn cors_handler() -> CorsLayer {
+    CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods(vec![
+            Method::GET,
+            Method::POST,
+            Method::PUT,
+            Method::DELETE,
+            Method::OPTIONS,
+        ])
+        .allow_headers(Any)
+        // .allow_credentials(true)
+        .max_age(Duration::from_secs(86400)) // 1日間のプリフライトキャッシュ
 }

@@ -13,5 +13,12 @@
     "nuxt": "^3.14.1592",
     "vue": "latest",
     "vue-router": "latest"
+  },
+  "devDependencies": {
+    "@nuxtjs/proxy": "^2.1.0",
+    "@pinia/nuxt": "^0.8.0",
+    "less": "^4.2.1",
+    "pinia": "^2.2.8",
+    "pug": "^3.0.3"
   }
 }
