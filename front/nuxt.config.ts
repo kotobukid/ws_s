@@ -3,6 +3,7 @@ import dns from "dns";
 dns.setDefaultResultOrder("ipv4first");
 
 export default defineNuxtConfig({
+  ssr: false,
   app: {
     head: {
       title: "test app",
