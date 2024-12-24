@@ -2,9 +2,12 @@
 import {onMounted, ref} from "vue";
 import {useWS} from "~/composables/websocket";
 import {useRuntimeConfig} from '#imports';
+import {useWasmTest} from "#imports";
 
 const {connect} = useWS();
 const config = useRuntimeConfig();
+
+const {create_text_message, create_list_message} = useWasmTest();
 
 let ws_url = config.public.wsHost as string;
 
@@ -77,11 +80,19 @@ const send_text = () => {
 
 const send_binary = () => {
   if (message.value) {
-    let v = str_to_binary(message.value);
+    const chat_message_b = create_text_message("taro", 42, message.value);
+
     if (ws) {
-      ws.send(v);
+      ws.send(chat_message_b);
     }
     message.value = '';
+  }
+}
+
+const list_socket = () => {
+  const list_message = create_list_message("taro", 42, "");
+  if (ws) {
+    ws.send(list_message);
   }
 }
 </script>
@@ -91,8 +102,10 @@ const send_binary = () => {
     input#input(type="text" v-model="message")
     button#send_button(@click.prevent="send_text") send
     button#send_button2(@click.prevent="send_binary") send as binary
+    br
+    button#send_button_list_socket(@click.prevent="list_socket") list socket
   br
-  span#output(v-text="last_log")
+  pre#output(v-text="last_log")
 </template>
 
 <style scoped>

@@ -1,7 +1,9 @@
 use std::fmt::Debug;
 use std::io::{Cursor, Read};
 use serde::{Deserialize, Serialize};
+use wasm_bindgen::prelude::wasm_bindgen;
 
+#[wasm_bindgen]
 #[derive(Eq, Serialize, Deserialize, Clone, Copy)]
 pub enum MessageType {
     Chat,
