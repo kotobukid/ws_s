@@ -1,12 +1,28 @@
 import dns from "dns";
 
+// IPv4優先
 dns.setDefaultResultOrder("ipv4first");
+
+// コマンドライン引数の解析
+const getCommandLineArg = (key: string): string | undefined => {
+  const arg = process.argv.find((arg) => arg.startsWith(`--${key}=`));
+  return arg ? arg.split('=')[1] : undefined;
+};
+
+// コマンドライン引数 "--hostname" を取得
+const cli_hostname = getCommandLineArg("hostname");
+
+// 環境変数と組み合わせてホスト名を設定
+const env_hostname: string = process.env.HOSTNAME || '127.0.0.1:8080';
+const final_hostname: string = cli_hostname || env_hostname;
+
+const hostname = `ws://${final_hostname}/ws`;
 
 export default defineNuxtConfig({
   ssr: false,
   runtimeConfig: {
     public: {
-      wsHost: process.env.WS_HOST || "ws://127.0.0.1:8080/ws"
+      wsHost: hostname
     }
   },
   app: {

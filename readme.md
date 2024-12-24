@@ -5,24 +5,25 @@ and Rust practice
 ## dev
 
 ```bash
-$ cargo run --bin server 127.0.0.1:8080
+$ cargo run --bin server -- --hostname 127.0.0.1:8080
 ```
 
 ```bash
-$ cargo run --bin client ws://127.0.0.1:8080/ws
+$ cargo run --bin client -- --hostname 127.0.0.1:8080
 ```
 
 ```bash
 cargo test -p message-pack
 ```
 
-## generate
+## build
+
 ```bash
 cd message-pack-wasm
 build.bat
 
 cd ../front
-npm run generate
+npm run generate -- --hostname 127.0.0.1:8080
 
 cd ..
 cargo build --release --bin server

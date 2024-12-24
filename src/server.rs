@@ -24,6 +24,16 @@ use tokio::sync::{mpsc, Mutex};
 use tower_http::services::ServeDir;
 use tower_http::cors::{Any, CorsLayer};
 use uuid::Uuid;
+use clap::Parser;
+
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    /// ホスト名 (環境変数から取得またはデフォルト値を適用)
+    #[arg(long, default_value_t = String::new())]
+    hostname: String,
+}
+
 
 struct SocketWrapper {
     id: Uuid,
@@ -91,14 +101,26 @@ const UPLOAD_DIRNAME: &str = "./uploads";
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    let args = Args::parse();
+
+    // 環境変数 "HOSTNAME" の取得
+    let env_hostname = env::var("HOSTNAME").ok();
+    // コマンドライン引数または環境変数、最後にデフォルト値を設定
+    let hostname = if !args.hostname.is_empty() {
+        args.hostname
+    } else if let Some(env) = env_hostname {
+        env
+    } else {
+        String::from("127.0.0.1:8080") // デフォルト値
+    };
+
+    info!("hostname: {}", hostname);
+
     SimpleLogger::new()
         .with_level(log::LevelFilter::Info) // デフォルトログレベル (Info以上のみ出力)
         .init()?;
 
-    let addr: SocketAddrV4 = env::args()
-        .nth(1)
-        .unwrap_or_else(|| "127.0.0.1:8080".parse().unwrap())
-        .parse()?;
+    let addr: SocketAddrV4 = hostname.parse()?;
 
     match exists(UPLOAD_DIRNAME) {
         Ok(true) => match fs::metadata(UPLOAD_DIRNAME) {

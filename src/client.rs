@@ -6,18 +6,39 @@ use message_pack::{
 use rfd::AsyncFileDialog;
 use rnglib::{Language, RNG};
 use std::env;
+use clap::Parser;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
 use ws_s::utils::{
     parse_arguments, replace_full_width_spaces_to_half_width_spaces_if_not_in_quotes,
 };
 
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    /// ホスト名 (環境変数から取得またはデフォルト値を適用)
+    #[arg(long, default_value_t = String::new())]
+    hostname: String,
+}
+
+
 #[tokio::main]
 async fn main() {
-    // let url = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 8080);
-    let url = env::args()
-        .nth(1)
-        .unwrap_or_else(|| panic!("this program requires at least one argument"));
+    let args = Args::parse();
+
+    // サーバーと同様
+    let env_hostname = env::var("HOSTNAME").ok();
+    let hostname = if !args.hostname.is_empty() {
+        args.hostname
+    } else if let Some(env) = env_hostname {
+        env
+    } else {
+        String::from("127.0.0.1:8080") // デフォルト値
+    };
+
+    println!("hostname: {}", hostname);
+
+    let url = format!("ws://{}/ws", hostname);
 
     let name = {
         let rng = RNG::try_from(&Language::Fantasy).unwrap();
