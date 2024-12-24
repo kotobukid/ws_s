@@ -1,7 +1,8 @@
 use std::fmt::Debug;
 use std::io::{Cursor, Read};
+use serde::{Deserialize, Serialize};
 
-#[derive(Eq)]
+#[derive(Eq, Serialize, Deserialize, Clone, Copy)]
 pub enum MessageType {
     Chat,
     Exit,
@@ -131,7 +132,7 @@ impl BinaryDeserializable for UnifiedMessage {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct TextMessage {
     pub sender: String,
     pub room: i32,

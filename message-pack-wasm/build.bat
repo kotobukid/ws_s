@@ -1,0 +1,1 @@
+wasm-pack.exe build --target web --out-dir ../front/public/pkg
