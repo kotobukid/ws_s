@@ -18,6 +18,12 @@ cargo test -p message-pack
 
 ## generate
 ```bash
-cd front
+cd message-pack-wasm
+build.bat
+
+cd ../front
 npm run generate
+
+cd ..
+cargo build --release --bin server
 ```
