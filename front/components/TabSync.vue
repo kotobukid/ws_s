@@ -34,7 +34,7 @@ const clear_logs = () => {
     h1 BroadcastChannel
     a(href="/additional/" target="_blank") open sub tab
     br
-    input#input(type="text" v-model="message")
+    input(type="text" v-model="message")
     button(@click="post_message") broadcast to all subs
     br
     button(@click="clear_logs") clear log
