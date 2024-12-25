@@ -22,7 +22,7 @@ fetch('/api/health.json').then(res => res.json()).then(json => {
 const components: Ref<PaneDefinition[]> = ref([
   {height: 150, component: 'ChatFront', id: 'chat_front'},
   {height: 212, component: 'TabSync', id: 'tab_sync'},
-  {height: 48, component: 'UnknownComponent', id: 'unknown_component'},
+  {height: 80, component: 'Unknown', id: 'unknown_component'},
 ]);
 
 const update_height = (data: { id: string, deltaX: number, deltaY: number }) => {
@@ -32,13 +32,23 @@ const update_height = (data: { id: string, deltaX: number, deltaY: number }) => 
       break;
     }
   }
-}
+};
+
+const switch_component = ({component_name, id}: { component_name: string, id: string }) => {
+  for (const component of components.value) {
+    if (component.id === id) {
+      component.component = component_name;
+      break;
+    }
+  }
+};
 </script>
 
 <template lang="pug">
   FlexFrame(
     :components="components"
     @update-height="update_height"
+    @switch-component="switch_component"
   )
 </template>
 

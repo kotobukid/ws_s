@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type {PaneDefinition} from "~/types";
+import type {ComponentAppType, PaneDefinition} from "~/types";
 
 const props = defineProps<{
   components: PaneDefinition[],
@@ -10,8 +10,9 @@ const emits = defineEmits<{
     id: string,
     deltaX: number,
     deltaY: number,
-  }): void
-}>()
+  }): void,
+  (e: 'switch-component', value: { component_name: ComponentAppType, id: string }): void,
+}>();
 
 const dragging = ref(false);
 const target_component = ref('');
@@ -32,13 +33,20 @@ const drag_move = (event: PointerEvent) => {
 const commit_drag = (e: PointerEvent) => {
   dragging.value = false;
 };
+
+const switch_component = (component: string, id: string) => {
+  emits('switch-component', {component_name: component, id});
+};
+
 </script>
 
 <template lang="pug">
   .flex_container
     .component.handle_parent(v-for="component in props.components" :style="`height: ${component.height}px; max-height: ${component.height}px;`")
-      h1 {{ component.component }}
-      FlexPane(:component="component.component")
+      FlexPane(
+        :component="component.component"
+        @switch-component="switch_component($event, component.id)"
+      )
       .handle.extend_handle.handle_bottom(@pointerdown="start_drag($event, component.id)")
     .drag_screen(v-if="dragging"
       @pointermove="drag_move"
@@ -67,13 +75,6 @@ const commit_drag = (e: PointerEvent) => {
 }
 
 .component {
-  h1 {
-    font-size: 10px;
-    background-color: #6f7dd5;
-    padding: 4px;
-    margin: 0;
-  }
-
   overflow-y: auto;
 
   padding: 2px;
