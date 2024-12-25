@@ -41,10 +41,6 @@ export default defineNuxtConfig({
   vite: {
     server: {
       proxy: {
-        '/additional': {
-          target: 'http://127.0.0.1:8080',
-          changeOrigin: true,
-        },
         '/api': {
           target: 'http://127.0.0.1:8080',
           changeOrigin: true,
@@ -58,6 +54,12 @@ export default defineNuxtConfig({
         }
       }
     }
+  },
+  generate: {
+    routes: [
+      "/",
+      "/additional/"
+    ]
   },
   modules: ["@pinia/nuxt"],
   compatibilityDate: '2024-12-03'

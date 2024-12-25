@@ -1,23 +1,30 @@
 <script setup lang="ts">
-const channel = new BroadcastChannel('channel');
+const channel: Ref<BroadcastChannel | null> = ref(null);
 const messages = ref([]) as Ref<string[]>;
 const message = ref('');
+
+
+onMounted(() => {
+  channel.value = new BroadcastChannel('channel');
+
+  channel.value.onmessage = (event) => {
+    if (event.data.event === 'message-to-main') {
+      messages.value.push(event.data.data);
+    }
+  };
+});
 
 const post_message = () => {
   const msg = message.value.trim();
   if (msg) {
-    channel.postMessage({event: 'message-from-main', data: msg});
-    message.value = '';
+    if (channel.value) {
+      channel.value.postMessage({event: 'message-from-main', data: msg});
+      message.value = '';
+    }
   }
 };
 
-channel.onmessage = (event) => {
-  if (event.data.event === 'message-to-main') {
-    messages.value.push(event.data.data);
-  }
-};
-
-const clear_log = () => {
+const clear_logs = () => {
   messages.value = [];
 };
 </script>
@@ -28,9 +35,9 @@ const clear_log = () => {
     a(href="/additional/" target="_blank") open sub tab
     br
     input#input(type="text" v-model="message")
-    button(@click="post_message") broadcast to all sub
+    button(@click="post_message") broadcast to all subs
     br
-    button(@click="clear_log") clear log
+    button(@click="clear_logs") clear log
     ul
       li(v-for="message in messages") {{ message }}
 </template>

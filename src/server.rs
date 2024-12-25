@@ -2,7 +2,6 @@ use axum::extract::ws::{Message, WebSocket};
 use axum::extract::State;
 use axum::extract::WebSocketUpgrade;
 use axum::http::Method;
-use axum::response::Html;
 use axum::Json;
 use futures_util::{SinkExt, StreamExt};
 use log::{info, warn};
@@ -15,7 +14,6 @@ use std::net::SocketAddrV4;
 use std::sync::Arc;
 use std::time::Duration;
 use std::{env, fs};
-use axum::routing::get;
 use simple_logger::SimpleLogger;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
@@ -163,7 +161,6 @@ async fn main() -> anyhow::Result<()> {
     let cors = cors_handler().await;
 
     let app = axum::Router::new()
-        .nest_service("/additional", ServeDir::new("./additional"))
         .nest_service("/", ServeDir::new("./front/dist"))
         .route(
             "/api/health.json",
