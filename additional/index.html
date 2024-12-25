@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>追加UI</title>
+    <style>
+        body {
+            background-color: #d0f8bc;
+        }
+    </style>
+</head>
+<body>
+<h1>Additional</h1>
+<p>This is additional content.</p>
+<input type="text" id="message">
+<button id="send">Send to main</button>
+<br>
+<button id="clear_log">clear log</button>
+<ul id="log">
+</ul>
+</body>
+<script>
+    window.onload = function () {
+        const channel = new BroadcastChannel('channel');
+
+        const $log = document.getElementById('log');
+        const $message = document.getElementById('message');
+
+        channel.onmessage = function (event) {
+            if (event.data.event === 'message-from-main') {
+                const li = document.createElement('li');
+                li.innerText = event.data.data;
+                $log.appendChild(li);
+            }
+        };
+
+        document.getElementById('send').onclick = function () {
+            const msg = $message.value.trim();
+            if (msg) {
+                channel.postMessage({event: 'message-to-main', data: msg});
+                $message.value = '';
+            }
+        };
+
+        document.getElementById('clear_log').onclick = function () {
+            $log.innerHTML = '';
+        };
+    };
+</script>
+</html>

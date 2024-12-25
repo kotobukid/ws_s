@@ -1,6 +1,7 @@
 <template>
   <div>
     <ChatFront/>
+    <TabSync/>
     <!--    <NuxtRouteAnnouncer />-->
     <!--    <NuxtWelcome />-->
   </div>
