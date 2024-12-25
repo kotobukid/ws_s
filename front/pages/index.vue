@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {useWasmTest} from "~/composables/wasm_test";
-import type {PaneDefinition} from "~/types";
+import type {ComponentAppType, PaneDefinition} from "~/types";
 
 const {init, test, create_text_message, deserialize_text_message} = useWasmTest();
 
@@ -34,7 +34,7 @@ const update_height = (data: { id: string, deltaX: number, deltaY: number }) => 
   }
 };
 
-const switch_component = ({component_name, id}: { component_name: string, id: string }) => {
+const switch_component = ({component_name, id}: { component_name: ComponentAppType, id: string }) => {
   for (const component of components.value) {
     if (component.id === id) {
       component.component = component_name;
