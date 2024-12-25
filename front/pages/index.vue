@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {useWasmTest} from "~/composables/wasm_test";
+import type {PaneDefinition} from "~/types";
 
 const {init, test, create_text_message, deserialize_text_message} = useWasmTest();
 
@@ -17,11 +18,16 @@ console.log({
 fetch('/api/health.json').then(res => res.json()).then(json => {
   console.log(json);
 });
+
+const components: PaneDefinition[] = [
+  {height: 150, name: 'ChatFront'},
+  {height: 212, name: 'TabSync'},
+  {height: 48, name: 'UnknownComponent'},
+];
 </script>
 
 <template lang="pug">
-  ChatFront
-  TabSync
+  FlexFrame(:components="components")
 </template>
 
 <style scoped>
