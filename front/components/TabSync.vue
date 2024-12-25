@@ -52,7 +52,7 @@ h1 {
 .tab_sync {
   background-color: #90d56f;
 
-  width: 500px;
+  width: 274px;
   border: 1px solid grey;
   padding: 5px;
 }
