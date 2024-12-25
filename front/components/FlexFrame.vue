@@ -7,7 +7,7 @@ const props = defineProps<{
 
 const emits = defineEmits<{
   (e: 'update-height', value: {
-    component: string,
+    id: string,
     deltaX: number,
     deltaY: number,
   }): void
@@ -16,15 +16,15 @@ const emits = defineEmits<{
 const dragging = ref(false);
 const target_component = ref('');
 
-const start_drag = (event: MouseEvent, component_name: string) => {
-  target_component.value = component_name;
+const start_drag = (event: MouseEvent, component_id: string) => {
+  target_component.value = component_id;
   dragging.value = true;
 };
 
 const drag_move = (event: PointerEvent) => {
   emits('update-height', {
-    component: target_component.value,
-    deltaX: event.movementX,
+    id: target_component.value,
+    deltaX: 0,
     deltaY: event.movementY,
   });
 };
@@ -37,9 +37,9 @@ const commit_drag = (e: PointerEvent) => {
 <template lang="pug">
   .flex_container
     .component.handle_parent(v-for="component in props.components" :style="`height: ${component.height}px; max-height: ${component.height}px;`")
-      h1 {{ component.name }}
-      FlexPane(:component="component.name")
-      .handle.extend_handle.handle_bottom(@pointerdown="start_drag($event, component.name)")
+      h1 {{ component.component }}
+      FlexPane(:component="component.component")
+      .handle.extend_handle.handle_bottom(@pointerdown="start_drag($event, component.id)")
     .drag_screen(v-if="dragging"
       @pointermove="drag_move"
       @pointerup="commit_drag"
@@ -102,7 +102,7 @@ const commit_drag = (e: PointerEvent) => {
   width: 100vw;
   height: 100vh;
   background-color: blueviolet;
-  opacity: 0.1;
+  opacity: 0;
 
   cursor: row-resize;
 }

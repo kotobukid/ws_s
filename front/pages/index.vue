@@ -20,14 +20,14 @@ fetch('/api/health.json').then(res => res.json()).then(json => {
 });
 
 const components: Ref<PaneDefinition[]> = ref([
-  {height: 150, name: 'ChatFront'},
-  {height: 212, name: 'TabSync'},
-  {height: 48, name: 'UnknownComponent'},
+  {height: 150, component: 'ChatFront', id: 'chat_front'},
+  {height: 212, component: 'TabSync', id: 'tab_sync'},
+  {height: 48, component: 'UnknownComponent', id: 'unknown_component'},
 ]);
 
-const update_height = (data: { component: string, deltaX: number, deltaY: number }) => {
+const update_height = (data: { id: string, deltaX: number, deltaY: number }) => {
   for (const component of components.value) {
-    if (component.name === data.component) {
+    if (component.id === data.id) {
       component.height += data.deltaY;
       break;
     }

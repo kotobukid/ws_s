@@ -1,4 +1,5 @@
 export type PaneDefinition = {
-  name: string,
+  id: string,
+  component: String,
   height: number,
 }
