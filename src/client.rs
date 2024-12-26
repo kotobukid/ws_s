@@ -22,6 +22,8 @@ struct Args {
     hostname: String,
 }
 
+const NEWLINE_PROMPT: &[u8; 3] = b"\n> ";
+
 #[tokio::main]
 async fn main() {
     let args = Args::parse();
@@ -81,6 +83,7 @@ async fn main() {
             // データの出力
             let mut stdout = tokio::io::stdout(); // mutable な stdout ハンドルの作成
             stdout.write_all(&data).await.unwrap();
+            let _ = stdout.write(NEWLINE_PROMPT).await.unwrap();
             stdout.flush().await.unwrap(); // フラッシュを明示的に実行
         })
     };
