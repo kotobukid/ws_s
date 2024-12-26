@@ -7,3 +7,7 @@ edition = "2021"
 serde = { version = "1.0.216", features = ["derive"] }
 wasm-bindgen = "0.2.99"
 log = "0.4.22"
+
+[profile.release]
+debug = 1
+split-debuginfo = "packed"
