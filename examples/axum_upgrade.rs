@@ -143,14 +143,15 @@ async fn handle_socket(mut socket: WebSocket) {
                         println!("BinaryMessage: {:?}", text);
 
                         socket
-                            .send(Message::Binary(format!("recv(server) {}", text).into_bytes()))
+                            .send(Message::Binary(
+                                format!("recv(server) {}", text).into_bytes(),
+                            ))
                             .await
                             .unwrap();
 
                         if text == String::from("exit") {
                             break;
                         }
-
                     }
                     _ => {
                         println!("{:?}", msg);

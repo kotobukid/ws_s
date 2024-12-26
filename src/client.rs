@@ -1,4 +1,6 @@
+use clap::Parser;
 use futures_util::{future, pin_mut, SinkExt, StreamExt};
+use log::{error, info, warn};
 use message_pack::{
     BinarySerializable, ExitMessage, FileTransferMessage, ListMessage, MessageType, TextMessage,
     UnifiedMessage,
@@ -6,8 +8,6 @@ use message_pack::{
 use rfd::AsyncFileDialog;
 use rnglib::{Language, RNG};
 use std::env;
-use clap::Parser;
-use log::{error, info, warn};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
 use ws_s::utils::{
@@ -21,7 +21,6 @@ struct Args {
     #[arg(long, default_value_t = String::new())]
     hostname: String,
 }
-
 
 #[tokio::main]
 async fn main() {

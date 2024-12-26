@@ -1,10 +1,10 @@
+use fs_extra::dir::{copy, CopyOptions};
+use log::{info, warn};
 use std::env;
 use std::fs;
 use std::path::Path;
 #[allow(unused_imports)]
 use std::process::Command;
-use fs_extra::dir::{copy, CopyOptions};
-use log::{info, warn};
 
 fn main() {
     let vite_build_dir = Path::new("front/dist"); // マウントポイント (ジャンクション)
@@ -45,7 +45,10 @@ fn main() {
             }
         }
     } else {
-        warn!("Vite build directory `{}` does not exist.", resolved_path.display());
+        warn!(
+            "Vite build directory `{}` does not exist.",
+            resolved_path.display()
+        );
         std::process::exit(1);
     }
 

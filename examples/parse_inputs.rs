@@ -1,4 +1,6 @@
-use ws_s::utils::{parse_arguments, replace_full_width_spaces_to_half_width_spaces_if_not_in_quotes};
+use ws_s::utils::{
+    parse_arguments, replace_full_width_spaces_to_half_width_spaces_if_not_in_quotes,
+};
 
 fn main() {
     let input1 = "/name \"taro suzuki\" age 25";

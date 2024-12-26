@@ -56,16 +56,33 @@ impl DerefMut for Character {
     }
 }
 
-fn walk (actor: &mut impl Movable, position: Position) {
+fn walk(actor: &mut impl Movable, position: Position) {
     actor.move_to(position);
 }
 
 fn main() {
-    let mut c = Character { name: String::from("Rust"), position: Position { x: 1, y: 2, z: 3} };
-    walk(&mut c, Position { x: 10, y: 20, z: 30 });
+    let mut c = Character {
+        name: String::from("Rust"),
+        position: Position { x: 1, y: 2, z: 3 },
+    };
+    walk(
+        &mut c,
+        Position {
+            x: 10,
+            y: 20,
+            z: 30,
+        },
+    );
     println!("{}", c);
 
-    let mut p = Position { x: 1, y: 2, z: 3};
-    walk(&mut p, Position { x: 30, y: 20, z: 10 });
+    let mut p = Position { x: 1, y: 2, z: 3 };
+    walk(
+        &mut p,
+        Position {
+            x: 30,
+            y: 20,
+            z: 10,
+        },
+    );
     println!("{}", p);
 }

@@ -1,12 +1,12 @@
+use crossterm::terminal::ClearType;
 use crossterm::{
     event::{Event, KeyCode},
     terminal::{self},
     ExecutableCommand,
 };
-use std::io::{self, Write};
-use crossterm::terminal::ClearType;
-use log::{LevelFilter};
+use log::LevelFilter;
 use simple_logger::SimpleLogger;
+use std::io::{self, Write};
 
 fn main() -> io::Result<()> {
     // ログ初期化
@@ -37,11 +37,9 @@ fn main() -> io::Result<()> {
     print_menu(&mut stdout, current_pos, prompt, &options, selected)?;
 
     loop {
-
         // 入力待機 (タイムアウトを設定)
         if crossterm::event::poll(std::time::Duration::from_millis(500))? {
             if let Event::Key(event) = crossterm::event::read()? {
-
                 if event.kind == crossterm::event::KeyEventKind::Press {
                     match event.code {
                         KeyCode::Up => {

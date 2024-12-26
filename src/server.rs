@@ -171,10 +171,13 @@ async fn main() -> anyhow::Result<()> {
             "/api/health.json",
             axum::routing::get(|| async { Json("{\"success\": \"true\"}") }),
         )
-        .route("/api/sse", get({
-            let sse_sent = sse_sent.clone();
-            move || sse_handler(sse_sent)
-        }))
+        .route(
+            "/api/sse",
+            get({
+                let sse_sent = sse_sent.clone();
+                move || sse_handler(sse_sent)
+            }),
+        )
         .route("/ws", axum::routing::get(handle_websocket))
         .layer(cors)
         .with_state(socket_manager)
@@ -209,7 +212,7 @@ async fn sse_handler(sent: Arc<Mutex<i32>>) -> Sse<impl Stream<Item = Result<Eve
             Some((Ok(event), sent_ref)) // `sent_ref` を次に渡す（move 必要なし）
         }
     })
-        .throttle(Duration::from_secs(1));
+    .throttle(Duration::from_secs(1));
 
     Sse::new(stream).keep_alive(KeepAlive::default())
 }
