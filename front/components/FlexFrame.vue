@@ -34,7 +34,7 @@ const commit_drag = (e: PointerEvent) => {
   dragging.value = false;
 };
 
-const switch_component = (component: string, id: string) => {
+const switch_component = (component: ComponentAppType, id: string) => {
   emits('switch-component', {component_name: component, id});
 };
 
