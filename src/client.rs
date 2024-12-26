@@ -7,6 +7,7 @@ use rfd::AsyncFileDialog;
 use rnglib::{Language, RNG};
 use std::env;
 use clap::Parser;
+use log::{error, info, warn};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
 use ws_s::utils::{
@@ -36,7 +37,7 @@ async fn main() {
         String::from("127.0.0.1:8080") // デフォルト値
     };
 
-    println!("hostname: {}", hostname);
+    info!("hostname: {}", hostname);
 
     let url = format!("ws://{}/ws", hostname);
 
@@ -52,7 +53,7 @@ async fn main() {
     tokio::spawn(read_stdin(name.to_string(), stdin_tx));
 
     let (ws_stream, _) = connect_async(&url).await.expect("Failed to connect");
-    println!("WebSocket handshake has been successfully completed");
+    info!("WebSocket handshake has been successfully completed");
 
     let (mut write, read) = ws_stream.split();
 
@@ -62,8 +63,8 @@ async fn main() {
         write
             .send(Message::Text(intro_message))
             .await
-            .expect("メッセージ送信に失敗しました");
-        println!("メッセージ `I am {}` が送信されました", name);
+            .expect("Sending Message failed.");
+        info!("Message sent: `I am {}`", name);
     }
 
     let stdin_to_ws = stdin_rx.map(Ok).forward(write);
@@ -72,7 +73,7 @@ async fn main() {
             let data = match message {
                 Ok(d) => d,
                 Err(e) => {
-                    eprintln!("{:?}", e);
+                    error!("{:?}", e);
                     std::process::exit(1)
                 }
             };
@@ -82,7 +83,6 @@ async fn main() {
             let mut stdout = tokio::io::stdout(); // mutable な stdout ハンドルの作成
             stdout.write_all(&data).await.unwrap();
             stdout.flush().await.unwrap(); // フラッシュを明示的に実行
-            println!()
         })
     };
 
@@ -104,7 +104,7 @@ async fn read_stdin(name: String, tx: futures_channel::mpsc::UnboundedSender<Mes
         let input = match String::from_utf8(buf) {
             Ok(s) => s,
             Err(_) => {
-                eprintln!("Invalid UTF-8 in stdin input");
+                warn!("Invalid UTF-8 in stdin input");
                 continue;
             }
         };
@@ -132,7 +132,7 @@ async fn read_stdin(name: String, tx: futures_channel::mpsc::UnboundedSender<Mes
 
                             if let Some(file) = file {
                                 let bytes = file.read().await;
-                                println!("filename: {:?}", file.file_name());
+                                info!("filename: {:?}", file.file_name());
 
                                 Some(UnifiedMessage::FileTransferMessage(FileTransferMessage {
                                     category: MessageType::FileTransfer,
@@ -177,7 +177,7 @@ async fn read_stdin(name: String, tx: futures_channel::mpsc::UnboundedSender<Mes
                 }
             }
             Err(e) => {
-                eprintln!("Error: {}", e);
+                warn!("Error: {}", e);
             }
         }
     }

@@ -4,6 +4,7 @@ use std::path::Path;
 #[allow(unused_imports)]
 use std::process::Command;
 use fs_extra::dir::{copy, CopyOptions};
+use log::{info, warn};
 
 fn main() {
     let vite_build_dir = Path::new("front/dist"); // マウントポイント (ジャンクション)
@@ -17,8 +18,8 @@ fn main() {
         Path::new("target/debug/front/dist")
     };
 
-    println!("target dir: {}", target_dir.display());
-    println!("vite build dir: {}", resolved_path.display());
+    info!("target dir: {}", target_dir.display());
+    info!("vite build dir: {}", resolved_path.display());
 
     if resolved_path.is_dir() {
         let mut options = CopyOptions::new();
@@ -44,9 +45,9 @@ fn main() {
             }
         }
     } else {
-        eprintln!("Vite build directory `{}` does not exist.", resolved_path.display());
+        warn!("Vite build directory `{}` does not exist.", resolved_path.display());
         std::process::exit(1);
     }
 
-    println!("cargo:rerun-if-changed=front/dist");
+    info!("cargo:rerun-if-changed=front/dist");
 }

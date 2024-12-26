@@ -94,9 +94,8 @@ impl SocketManager {
         let sockets = self.sockets.lock().await; // 非同期ロックを取得
         info!("Current sockets:");
         for (id, _sender) in sockets.iter() {
-            println!("\t{}", id);
+            info!("\t{}", id);
         }
-        println!();
     }
 }
 
@@ -219,7 +218,6 @@ async fn handle_websocket(
     State(manager): State<Arc<Mutex<SocketManager>>>,
     ws: WebSocketUpgrade,
 ) -> axum::response::Response {
-    info!("handle_websocket {:?}", ws);
     ws.on_upgrade(move |socket| handle_socket(manager, socket))
 }
 

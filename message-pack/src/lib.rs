@@ -2,6 +2,7 @@ use std::fmt::Debug;
 use std::io::{Cursor, Read};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::wasm_bindgen;
+use log::info;
 
 #[wasm_bindgen]
 #[derive(Eq, Serialize, Deserialize, Clone, Copy)]
@@ -384,7 +385,7 @@ impl BinaryDeserializable for FileTransferMessage {
             .map_err(|_| "Failed to read category")?;
         let category = MessageType::from_bytes(&category_buf[0])?;
 
-        println!("category: {:?}", category);
+        info!("category: {:?}", category);
 
         let mut room_buf = [0u8; 4];
         cursor
@@ -392,7 +393,7 @@ impl BinaryDeserializable for FileTransferMessage {
             .map_err(|_| "Failed to read room")?;
         let room = i32::from_be_bytes(room_buf);
 
-        println!("room: {:?}", room);
+        info!(" room: {:?}", room);
 
         // 送信者名
         let mut sender_len_buf = [0u8; 1];
@@ -406,7 +407,7 @@ impl BinaryDeserializable for FileTransferMessage {
             .map_err(|_| "Failed to read sender")?;
         let sender = String::from_utf8(sender_buf).map_err(|_| "Invalid UTF-8 in sender")?;
 
-        println!("sender: {:?}", sender);
+        info!(" sender: {:?}", sender);
 
         // ファイル名
         let mut filename_len_buf = [0u8; 1];
@@ -506,7 +507,7 @@ impl BinaryDeserializable for ListMessage {
             .map_err(|_| "Failed to read category")?;
         let category = MessageType::from_bytes(&category_buf[0])?;
 
-        println!("category: {:?}", category);
+        info!("category: {:?}", category);
 
         let mut room_buf = [0u8; 4];
         cursor
@@ -514,7 +515,7 @@ impl BinaryDeserializable for ListMessage {
             .map_err(|_| "Failed to read room")?;
         let room = i32::from_be_bytes(room_buf);
 
-        println!("room: {:?}", room);
+        info!(" room: {:?}", room);
 
         // 送信者名
         let mut sender_len_buf = [0u8; 1];
@@ -528,7 +529,7 @@ impl BinaryDeserializable for ListMessage {
             .map_err(|_| "Failed to read sender")?;
         let sender = String::from_utf8(sender_buf).map_err(|_| "Invalid UTF-8 in sender")?;
 
-        println!("sender: {:?}", sender);
+        info!(" sender: {:?}", sender);
 
         // リスト対象
         let mut target_len_buf = [0u8; 1];
