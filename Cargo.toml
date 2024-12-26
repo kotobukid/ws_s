@@ -25,10 +25,11 @@ rfd = "0.15.1"
 crossterm = "0.28.1"
 atty = "0.2.14"
 simple_logger = "5.0.0"
-axum = { version = "0.7.9", features = ["ws"] }
+axum = { version = "0.7.9", features = ["ws", "tokio"] }
 tower = "0.5.1"
 tower-http = { version = "0.6.2", features = ["cors", "fs"] }
 clap = { version = "4.5.23", features = ["derive", "env"] }
+tokio-stream = "0.1.17"
 
 
 [build-dependencies]

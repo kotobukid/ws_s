@@ -5,11 +5,13 @@ import {ComponentAppList} from "#components";
 // 変化できるコンポーネントは、現状ホワイトリストで明記する
 import {ChatFront} from "#components";
 import {TabSync} from "#components";
+import {SseReceiver} from "#components";
 import type {ComponentAppType} from "~/types";
 
 const componentsDict = new Map<ComponentAppType, typeof ChatFront | typeof TabSync>();
 componentsDict.set('ChatFront', ChatFront);
 componentsDict.set('TabSync', TabSync);
+componentsDict.set('SseReceiver', SseReceiver);
 
 export default defineComponent({
   props: {

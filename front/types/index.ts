@@ -4,4 +4,4 @@ export type PaneDefinition = {
   height: number,
 }
 
-export type ComponentAppType = 'ChatFront' | 'TabSync' | 'Unknown';
+export type ComponentAppType = 'ChatFront' | 'TabSync' | 'SseReceiver' | 'Unknown';

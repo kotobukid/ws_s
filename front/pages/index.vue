@@ -20,6 +20,7 @@ fetch('/api/health.json').then(res => res.json()).then(json => {
 });
 
 const components: Ref<PaneDefinition[]> = ref([
+  {height: 200, component: 'SseReceiver', id: 'sse_receiver'},
   {height: 150, component: 'ChatFront', id: 'chat_front'},
   {height: 212, component: 'TabSync', id: 'tab_sync'},
   {height: 80, component: 'Unknown', id: 'unknown_component'},

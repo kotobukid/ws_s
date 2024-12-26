@@ -2,28 +2,33 @@ use axum::extract::ws::{Message, WebSocket};
 use axum::extract::State;
 use axum::extract::WebSocketUpgrade;
 use axum::http::Method;
+use axum::response::sse::{Event, KeepAlive, Sse};
+use axum::routing::get;
 use axum::Json;
+use clap::Parser;
+use futures_util::stream::{self, Stream};
 use futures_util::{SinkExt, StreamExt};
 use log::{info, warn};
 use message_pack::{
     get_type, BinaryDeserializable, FileTransferMessage, ListMessage, MessageType, TextMessage,
 };
+use simple_logger::SimpleLogger;
 use std::collections::HashMap;
+use std::convert::Infallible;
 use std::fs::exists;
 use std::net::SocketAddrV4;
 use std::sync::Arc;
 use std::time::Duration;
 use std::{env, fs};
-use simple_logger::SimpleLogger;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpListener;
 use tokio::sync::mpsc::Sender;
 use tokio::sync::{mpsc, Mutex};
-use tower_http::services::ServeDir;
+use tokio_stream::StreamExt as _;
 use tower_http::cors::{Any, CorsLayer};
+use tower_http::services::ServeDir;
 use uuid::Uuid;
-use clap::Parser;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -32,7 +37,6 @@ struct Args {
     #[arg(long, default_value_t = String::new())]
     hostname: String,
 }
-
 
 struct SocketWrapper {
     id: Uuid,
@@ -158,6 +162,8 @@ async fn main() -> anyhow::Result<()> {
 
     let socket_manager = Arc::new(Mutex::new(SocketManager::new()));
 
+    let sse_sent = Arc::new(Mutex::new(0));
+
     let cors = cors_handler().await;
 
     let app = axum::Router::new()
@@ -166,13 +172,47 @@ async fn main() -> anyhow::Result<()> {
             "/api/health.json",
             axum::routing::get(|| async { Json("{\"success\": \"true\"}") }),
         )
+        .route("/api/sse", get({
+            let sse_sent = sse_sent.clone();
+            move || sse_handler(sse_sent)
+        }))
         .route("/ws", axum::routing::get(handle_websocket))
         .layer(cors)
-        .with_state(socket_manager);
+        .with_state(socket_manager)
+        .with_state(sse_sent);
 
     let _ = axum::serve(listener, app.into_make_service()).await?;
 
     Ok(())
+}
+
+async fn sse_handler(sent: Arc<Mutex<i32>>) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+    let stream = stream::unfold(sent.clone(), |sent_ref| async move {
+        let current_count;
+
+        {
+            let mut count = sent_ref.lock().await; // ロックをスコープ内で限定
+            *count += 1;
+            current_count = *count; // カウントの値をコピー
+        }
+
+        // ロックが解放された後にイベントを生成
+
+        if current_count > 100 {
+            {
+                let mut count = sent_ref.lock().await; // ロックをスコープ内で限定
+                *count = 0;
+                info!("reset sent count");
+            }
+            None
+        } else {
+            let event = Event::default().data(format!("hi! ({})", current_count));
+            Some((Ok(event), sent_ref)) // `sent_ref` を次に渡す（move 必要なし）
+        }
+    })
+        .throttle(Duration::from_secs(1));
+
+    Sse::new(stream).keep_alive(KeepAlive::default())
 }
 
 async fn handle_websocket(
@@ -220,7 +260,7 @@ async fn handle_socket(manager: Arc<Mutex<SocketManager>>, mut socket: WebSocket
     let manager_clone2 = manager.clone();
     let uuid_clone = uuid;
     tokio::spawn(async move {
-        while let Some(Ok(msg)) = receiver.next().await {
+        while let Some(Ok(msg)) = futures_util::StreamExt::next(&mut receiver).await {
             match msg {
                 Message::Text(text) => {
                     // // メッセージを全クライアントに送信 (ブロードキャスト)
