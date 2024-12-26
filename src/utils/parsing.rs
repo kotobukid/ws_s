@@ -56,10 +56,10 @@ pub fn parse_arguments(input: &str) -> Result<Vec<String>, String> {
 pub fn replace_full_width_spaces_to_half_width_spaces_if_not_in_quotes(input: &str) -> String {
     let mut output = String::with_capacity(input.len());
     let mut in_quotes: Option<char> = None;
-    let mut chars = input.chars();
+    let chars = input.chars();
     let mut last_was_space = false;
 
-    while let Some(c) = chars.next() {
+    for c in chars {
         match c {
             '\'' | '"' => {
                 if Some(c) == in_quotes {

@@ -563,12 +563,6 @@ mod tests {
 
     #[test]
     fn test_encode_decode() {
-        let message = TextMessage {
-            sender: "Alice".to_string(),
-            room: 42,
-            category: MessageType::Chat,
-            content: "Hello, world!".to_string(),
-        };
 
         let message = TextMessage {
             sender: "Alice".to_string(),

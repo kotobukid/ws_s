@@ -43,9 +43,7 @@ fn main() -> io::Result<()> {
                 if event.kind == crossterm::event::KeyEventKind::Press {
                     match event.code {
                         KeyCode::Up => {
-                            if selected > 0 {
-                                selected -= 1;
-                            }
+                            selected = selected.saturating_sub(1);
                         }
                         KeyCode::Down => {
                             if selected < options.len() - 1 {

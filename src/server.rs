@@ -140,19 +140,17 @@ async fn main() -> anyhow::Result<()> {
             }
         },
         Ok(false) => {
-            if let Err(_) = fs::create_dir(UPLOAD_DIRNAME) {
+            if fs::create_dir(UPLOAD_DIRNAME).is_err() {
                 warn!("Error: creating directory {}", UPLOAD_DIRNAME);
                 std::process::exit(1);
             } else {
                 warn!("Directory {} is created", UPLOAD_DIRNAME);
             }
         }
-        Err(_) => match fs::create_dir(UPLOAD_DIRNAME) {
-            Err(e) => {
-                warn!("Error: {}", e);
-                std::process::exit(1);
-            }
-            _ => {}
+        Err(_) => {
+            let e =  fs::create_dir(UPLOAD_DIRNAME);
+            warn!("Error: {:?}", e);
+            std::process::exit(1);
         },
     }
 
@@ -183,7 +181,7 @@ async fn main() -> anyhow::Result<()> {
         .with_state(socket_manager)
         .with_state(sse_sent);
 
-    let _ = axum::serve(listener, app.into_make_service()).await?;
+    axum::serve(listener, app.into_make_service()).await?;
 
     Ok(())
 }
@@ -278,7 +276,7 @@ async fn handle_socket(manager: Arc<Mutex<SocketManager>>, mut socket: WebSocket
                     match get_type(&m[0]) {
                         MessageType::Chat => {
                             // chat
-                            let chat_message = TextMessage::from_bytes(&*m).unwrap();
+                            let chat_message = TextMessage::from_bytes(&m).unwrap();
                             // チャットメッセージを何らかの形で文字列に変換してブロードキャスト
                             let message_string = format!(
                                 "[Room {} - {}]: {}",
@@ -313,7 +311,7 @@ async fn handle_socket(manager: Arc<Mutex<SocketManager>>, mut socket: WebSocket
                         MessageType::FileTransfer => {
                             // file transfer
                             let d: FileTransferMessage =
-                                FileTransferMessage::from_bytes(&*m).unwrap();
+                                FileTransferMessage::from_bytes(&m).unwrap();
 
                             match d.category {
                                 MessageType::FileTransfer => {
@@ -351,7 +349,7 @@ async fn handle_socket(manager: Arc<Mutex<SocketManager>>, mut socket: WebSocket
                             }
                         }
                         MessageType::List => {
-                            let d: ListMessage = ListMessage::from_bytes(&*m).unwrap();
+                            let d: ListMessage = ListMessage::from_bytes(&m).unwrap();
 
                             match d.target.as_str() {
                                 "socket" => {

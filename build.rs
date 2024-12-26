@@ -27,21 +27,20 @@ fn main() {
         options.copy_inside = true; // 中身のみコピー
 
         // ① 必要ならターゲットディレクトリを作成
-        fs::create_dir_all(&target_dir).expect("Failed to create target directory");
+        fs::create_dir_all(target_dir).expect("Failed to create target directory");
 
         // ② resolved_path の中身をコピー
         for entry in resolved_path
             .read_dir()
             .expect("Failed to read resolved path directory")
+            .flatten()
         {
-            if let Ok(entry) = entry {
-                let from = entry.path();
-                if from.is_dir() {
-                    copy(&from, &target_dir, &options).expect("Failed to copy directory content.");
-                } else {
-                    fs::copy(&from, &target_dir.join(entry.file_name()))
-                        .expect("Failed to copy file content.");
-                }
+            let from = entry.path();
+            if from.is_dir() {
+                copy(&from, target_dir, &options).expect("Failed to copy directory content.");
+            } else {
+                fs::copy(&from, target_dir.join(entry.file_name()))
+                    .expect("Failed to copy file content.");
             }
         }
     } else {

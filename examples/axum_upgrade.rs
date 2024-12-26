@@ -134,7 +134,7 @@ async fn handle_socket(mut socket: WebSocket) {
                             .await
                             .unwrap();
 
-                        if text == String::from("exit") {
+                        if text == *"exit" {
                             break;
                         }
                     }
@@ -149,7 +149,7 @@ async fn handle_socket(mut socket: WebSocket) {
                             .await
                             .unwrap();
 
-                        if text == String::from("exit") {
+                        if text == *"exit" {
                             break;
                         }
                     }

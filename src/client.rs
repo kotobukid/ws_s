@@ -41,7 +41,7 @@ async fn main() {
     let url = format!("ws://{}/ws", hostname);
 
     let name = {
-        let rng = RNG::try_from(&Language::Fantasy).unwrap();
+        let rng = RNG::from(&Language::Fantasy);
 
         let first_name = rng.generate_name();
         let last_name = rng.generate_name();
@@ -114,7 +114,7 @@ async fn read_stdin(name: String, tx: futures_channel::mpsc::UnboundedSender<Mes
 
         match tokens {
             Ok(tokens) => {
-                if tokens.len() > 0 {
+                if !tokens.is_empty() {
                     let command = tokens[0].as_str();
                     let args = &tokens[1..];
 
@@ -145,7 +145,7 @@ async fn read_stdin(name: String, tx: futures_channel::mpsc::UnboundedSender<Mes
                             }
                         }
                         "/list" => {
-                            let target = if args.len() > 0 {
+                            let target = if !args.is_empty() {
                                 args[0].as_str()
                             } else {
                                 "socket"
